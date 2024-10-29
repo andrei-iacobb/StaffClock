@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import messagebox
 import sqlite3
 import datetime
+from screeninfo import get_monitors
+
 
 # Function to handle clock in and out actions
 def clock_action(action, staff_code):
@@ -81,9 +83,20 @@ def on_staff_code_change(event):
         else:
             greeting_label.config(text='Unknown')
 
+
+
 # GUI Setup
 def main():
     root = tk.Tk()
+
+    root.overrideredirect(True)
+    root.resizable(False, False)
+
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+
+    root.geometry(f"{screen_width}x{screen_height}")
+
     global staff_code_entry, greeting_label
     root.title('Staff Clock In/Out System')
 
@@ -103,6 +116,9 @@ def main():
 
     get_hours_button = tk.Button(root, text='Get Hours', command=lambda: get_hours(staff_code_entry.get()))
     get_hours_button.grid(row=3, column=0, columnspan=2, pady=10)
+
+    exit_button = tk.Button(root, text='Exit', command=root.destroy)
+    exit_button.grid(row=3, column=2, padx=10, pady=10)
 
     root.mainloop()
 
