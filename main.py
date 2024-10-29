@@ -88,37 +88,55 @@ def on_staff_code_change(event):
 # GUI Setup
 def main():
     root = tk.Tk()
-
-    root.overrideredirect(True)
+    root.title('Staff Clock In/Out System')
+    root.overrideredirect(True)  # Fullscreen without borders
     root.resizable(False, False)
 
+    # Fullscreen settings
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
-
     root.geometry(f"{screen_width}x{screen_height}")
 
-    global staff_code_entry, greeting_label
-    root.title('Staff Clock In/Out System')
+    # Colors and font
+    bg_color = "#2C3E50"
+    fg_color = "#ECF0F1"
+    button_bg = "#3498DB"
+    button_fg = "#ECF0F1"
+    font_large = ('Helvetica', 16, 'bold')
+    font_medium = ('Helvetica', 12)
 
-    tk.Label(root, text='Staff Code:').grid(row=0, column=0, padx=10, pady=10)
-    staff_code_entry = tk.Entry(root)
-    staff_code_entry.grid(row=0, column=1, padx=10, pady=10)
+    root.config(bg=bg_color)
+
+    global staff_code_entry, greeting_label
+
+    # Center Frame to hold all widgets
+    center_frame = tk.Frame(root, bg=bg_color)
+    center_frame.place(relx=0.5, rely=0.5, anchor="center")
+
+    # Staff Code Label
+    tk.Label(center_frame, text='Enter Staff Code:', bg=bg_color, fg=fg_color, font=font_medium).grid(row=0, column=0, padx=20, pady=10, sticky="e")
+    staff_code_entry = tk.Entry(center_frame, font=font_medium)
+    staff_code_entry.grid(row=0, column=1, padx=20, pady=10)
     staff_code_entry.bind('<KeyRelease>', on_staff_code_change)
 
-    greeting_label = tk.Label(root, text='', font=('Helvetica', 12, 'bold'))
-    greeting_label.grid(row=1, column=0, columnspan=2, pady=10)
+    # Greeting Label
+    greeting_label = tk.Label(center_frame, text='', bg=bg_color, fg=fg_color, font=font_large)
+    greeting_label.grid(row=1, column=0, columnspan=2, pady=20)
 
-    clock_in_button = tk.Button(root, text='Clock In', command=lambda: clock_action('in', staff_code_entry.get()))
-    clock_in_button.grid(row=2, column=0, padx=10, pady=10)
+    # Buttons
+    button_style = {"bg": button_bg, "fg": button_fg, "font": font_medium, "width": 15, "height": 2}
 
-    clock_out_button = tk.Button(root, text='Clock Out', command=lambda: clock_action('out', staff_code_entry.get()))
-    clock_out_button.grid(row=2, column=1, padx=10, pady=10)
+    clock_in_button = tk.Button(center_frame, text='Clock In', command=lambda: clock_action('in', staff_code_entry.get()), **button_style)
+    clock_in_button.grid(row=2, column=0, padx=10, pady=5)
 
-    get_hours_button = tk.Button(root, text='Get Hours', command=lambda: get_hours(staff_code_entry.get()))
+    clock_out_button = tk.Button(center_frame, text='Clock Out', command=lambda: clock_action('out', staff_code_entry.get()), **button_style)
+    clock_out_button.grid(row=2, column=1, padx=10, pady=5)
+
+    get_hours_button = tk.Button(center_frame, text='Get Hours', command=lambda: get_hours(staff_code_entry.get()), **button_style)
     get_hours_button.grid(row=3, column=0, columnspan=2, pady=10)
 
-    exit_button = tk.Button(root, text='Exit', command=root.destroy)
-    exit_button.grid(row=3, column=2, padx=10, pady=10)
+    exit_button = tk.Button(center_frame, text='Exit', command=root.destroy, **button_style)
+    exit_button.grid(row=4, column=0, columnspan=2, pady=20)
 
     root.mainloop()
 
