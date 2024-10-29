@@ -3,22 +3,6 @@ from tkinter import messagebox
 import sqlite3
 import datetime
 
-# Set up the SQLite database
-def init_db():
-    conn = sqlite3.connect('staff_hours.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS staff (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    code TEXT NOT NULL UNIQUE)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS clock_records (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    staff_code TEXT NOT NULL,
-                    clock_in_time TEXT,
-                    clock_out_time TEXT)''')
-    conn.commit()
-    conn.close()
-
 # Function to handle clock in and out actions
 def clock_action(action, staff_code):
     conn = sqlite3.connect('staff_hours.db')
@@ -37,7 +21,8 @@ def clock_action(action, staff_code):
         c.execute('INSERT INTO clock_records (staff_code, clock_in_time) VALUES (?, ?)', (staff_code, clock_in_time))
         conn.commit()
         conn.close()
-        messagebox.showinfo('Success', f'Clock-in recorded successfully at {clock_in_time}')
+        time_in = datetime.datetime.fromisoformat(clock_in_time).strftime('%H:%M')
+        messagebox.showinfo('Success', f'Clock-in recorded successfully at {time_in}')
 
     elif action == 'out':
         clock_out_time = datetime.datetime.now().isoformat()
@@ -51,7 +36,8 @@ def clock_action(action, staff_code):
         c.execute('UPDATE clock_records SET clock_out_time = ? WHERE id = ?', (clock_out_time, clock_record[0]))
         conn.commit()
         conn.close()
-        messagebox.showinfo('Success', f'Clock-out recorded successfully at {clock_out_time}')
+        time_out = datetime.datetime.fromisoformat(clock_out_time).strftime('%H:%M')
+        messagebox.showinfo('Success', f'Clock-out recorded successfully at {time_out}')
 
     else:
         conn.close()
@@ -80,24 +66,43 @@ def get_hours(staff_code):
     conn.close()
     messagebox.showinfo('Total Hours', f'Total hours worked: {total_hours:.2f}')
 
+# Function to handle live updates based on staff code entry
+def on_staff_code_change(event):
+    staff_code = staff_code_entry.get()
+    if len(staff_code) == 4 and staff_code.isdigit():
+        # Fetch staff name and display greeting
+        conn = sqlite3.connect('staff_hours.db')
+        c = conn.cursor()
+        c.execute('SELECT name FROM staff WHERE code = ?', (staff_code,))
+        staff = c.fetchone()
+        conn.close()
+        if staff:
+            greeting_label.config(text=f'Hello, {staff[0]}!')
+        else:
+            greeting_label.config(text='Unknown')
+
 # GUI Setup
 def main():
-    init_db()
     root = tk.Tk()
+    global staff_code_entry, greeting_label
     root.title('Staff Clock In/Out System')
 
     tk.Label(root, text='Staff Code:').grid(row=0, column=0, padx=10, pady=10)
     staff_code_entry = tk.Entry(root)
     staff_code_entry.grid(row=0, column=1, padx=10, pady=10)
+    staff_code_entry.bind('<KeyRelease>', on_staff_code_change)
+
+    greeting_label = tk.Label(root, text='', font=('Helvetica', 12, 'bold'))
+    greeting_label.grid(row=1, column=0, columnspan=2, pady=10)
 
     clock_in_button = tk.Button(root, text='Clock In', command=lambda: clock_action('in', staff_code_entry.get()))
-    clock_in_button.grid(row=1, column=0, padx=10, pady=10)
+    clock_in_button.grid(row=2, column=0, padx=10, pady=10)
 
     clock_out_button = tk.Button(root, text='Clock Out', command=lambda: clock_action('out', staff_code_entry.get()))
-    clock_out_button.grid(row=1, column=1, padx=10, pady=10)
+    clock_out_button.grid(row=2, column=1, padx=10, pady=10)
 
     get_hours_button = tk.Button(root, text='Get Hours', command=lambda: get_hours(staff_code_entry.get()))
-    get_hours_button.grid(row=2, column=0, columnspan=2, pady=10)
+    get_hours_button.grid(row=3, column=0, columnspan=2, pady=10)
 
     root.mainloop()
 
