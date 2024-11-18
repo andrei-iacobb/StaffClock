@@ -1,11 +1,20 @@
+import os
+
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout,
-    QHBoxLayout, QDialog, QMessageBox, QTableWidget, QTableWidgetItem, QMainWindow
+    QHBoxLayout, QDialog, QMessageBox, QTableWidget, QTableWidgetItem, QMainWindow, QDialogButtonBox
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
+from PyQt6.QtPdf import QPdfDocument
+from PyQt6.QtPdfWidgets import QPdfView
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
 import sqlite3
 import datetime
+import socket
 import random
 import sys
 
@@ -104,6 +113,7 @@ class StaffClockInOutSystem(QMainWindow):
             conn.close()
             time_in = datetime.datetime.fromisoformat(clock_in_time).strftime('%H:%M')
             QMessageBox.information(self, 'Success', f'Clock-in recorded successfully at {time_in}')
+            self.staff_code_entry.clear()
         elif action == 'out':
             clock_out_time = datetime.datetime.now().isoformat()
             c.execute('SELECT id, clock_in_time FROM clock_records WHERE staff_code = ? AND clock_out_time IS NULL',
@@ -120,6 +130,8 @@ class StaffClockInOutSystem(QMainWindow):
             time_out = datetime.datetime.fromisoformat(clock_out_time).strftime('%H:%M')
             QMessageBox.information(self, 'Success', f'Clock-out recorded successfully at {time_out}.\n'
                                                      f'Today you have worked {self.get_hours(staff_code)}')
+            self.staff_code_entry.clear()
+
         else:
             conn.close()
             QMessageBox.critical(self, 'Error', 'Invalid action')
@@ -165,10 +177,24 @@ class StaffClockInOutSystem(QMainWindow):
         else:
             self.greeting_label.setText('')
 
+    def print_via_jetdirect(self, file_path):
+        printer_ip = "192.168.1.250"
+        printer_port = 9100
+        try:
+            with open(file_path, "rb") as pdf_file:
+                pdf_data = pdf_file.read()
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as printer_socket:
+                printer_socket.connect((printer_ip, printer_port))
+                printer_socket.sendall(pdf_data)
+            print("PDF sent to printer successfully!")
+        except Exception as e:
+            print(f"Failed to print PDF: {e}")
+
     def open_admin_tab(self):
         admin_tab = QDialog(self)
         admin_tab.setWindowTitle('Admin Page')
-        admin_tab.setGeometry(100, 100, 500, 400)
+        admin_tab.setFixedSize(500,400)
+
 
         layout = QVBoxLayout(admin_tab)
         layout.setSpacing(20)  # Space between widgets in the dialog
@@ -199,12 +225,35 @@ class StaffClockInOutSystem(QMainWindow):
         view_records_button.setFont(QFont("Arial", 16))
         view_records_button.setMinimumSize(150, 50)
         view_records_button.setStyleSheet("background-color: #2196F3; color: white;")
-        view_records_button.clicked.connect(self.show_record)
+        view_records_button.clicked.connect(self.open_records_tab)
         layout.addWidget(view_records_button)
+
+        print_records_button = QPushButton("Print Records")
+        print_records_button.setFont(QFont("Arial", 16))
+        print_records_button.setMinimumSize(150, 50)
+        print_records_button.setStyleSheet("background-color: #967bb6; color: white;")
+        print_records_button.clicked.connect(self.preparePrint)
+        layout.addWidget(print_records_button)
 
         admin_tab.exec()
 
     def add_staff(self):
+        dlg = QDialog(self)
+        QBtn = (
+                QDialogButtonBox.StandardButton.Yes| QDialogButtonBox.StandardButton.No
+        )
+        dlg.buttonBox = QDialogButtonBox(QBtn)
+        dlg.buttonBox.accepted.connect(dlg.accepted)
+        dlg.buttonBox.rejected.connect(dlg.reject)
+        layout = QVBoxLayout(dlg)
+        message = QLabel("Are you sure you would like to add this user?")
+        layout.addWidget(message)
+        layout.addWidget(dlg.buttonBox)
+        dlg.setLayout(layout)
+        dlg.setWindowTitle('Add Staff Confirmation')
+        dlg.exec()
+
+    def accepted(self, s):
         staff_name = self.name_entry.text().strip()
         if staff_name:
             staff_code = random.randint(1000, 9999)
@@ -224,6 +273,8 @@ class StaffClockInOutSystem(QMainWindow):
                 conn.close()
         else:
             QMessageBox.critical(self, 'Invalid Input', 'Please enter a valid staff name')
+    def rejected(self):
+        QMessageBox.critical(self, 'Rejected entry', 'Staff was not added to the list')
 
     def delete_staff(self):
         staff_name = self.name_entry.text().strip()
@@ -252,26 +303,97 @@ class StaffClockInOutSystem(QMainWindow):
             c.execute('SELECT clock_in_time, clock_out_time FROM clock_records WHERE staff_code = ?', (staff_code,))
             records = c.fetchall()
             conn.close()
+            self.createTable(records, staff_name)
 
-            record_dialog = QDialog(self)
-            record_dialog.setWindowTitle("Staff Clock Records")
-            record_dialog.setGeometry(100, 100, 800, 600)
-            layout = QVBoxLayout(record_dialog)
-            table = QTableWidget()
-            table.setRowCount(len(records))
-            table.setColumnCount(4)
-            table.setHorizontalHeaderLabels(["Clock In Date", "Clock In Time", "Clock Out Date", "Clock Out Time"])
 
-            for i, record in enumerate(records):
+
+    def createTable(self, records, staff_name):
+            # Prepare data for the PDF table
+            table_data = [["Clock In Date", "Clock In Time", "Clock Out Date", "Clock Out Time"]]
+            for record in records:
                 clock_in = datetime.datetime.fromisoformat(record[0]) if record[0] else None
                 clock_out = datetime.datetime.fromisoformat(record[1]) if record[1] else None
-                table.setItem(i, 0, QTableWidgetItem(clock_in.strftime('%Y-%m-%d') if clock_in else ''))
-                table.setItem(i, 1, QTableWidgetItem(clock_in.strftime('%H:%M:%S') if clock_in else ''))
-                table.setItem(i, 2, QTableWidgetItem(clock_out.strftime('%Y-%m-%d') if clock_out else ''))
-                table.setItem(i, 3, QTableWidgetItem(clock_out.strftime('%H:%M:%S') if clock_out else ''))
+                table_data.append([
+                    clock_in.strftime('%d-%m-%Y') if clock_in else '',
+                    clock_in.strftime('%H:%M:%S') if clock_in else '',
+                    clock_out.strftime('%d-%m-%Y') if clock_out else '',
+                    clock_out.strftime('%H:%M:%S') if clock_out else '',
+                ])
 
-            layout.addWidget(table)
-            record_dialog.exec()
+            # Generate and print the PDF
+            title = f"Records for {staff_name}"
+            self.generate_pdf_table(f"{staff_name}_records.pdf", table_data, title)
+            #QMessageBox.information(self, "Success", f"Records for {staff_name} have been saved as a PDF.")
+
+    def open_records_tab(self, staff_name):
+        self.show_record()
+        # Create a dialog for viewing records
+        view_records = QDialog(self)
+        view_records.setWindowTitle('View Records')
+        view_records.setGeometry(100, 100, 400, 500)
+        # Load the PDF document
+        file_path = os.path.join(os.path.dirname(__file__), f'/Users/andreiiacob/PycharmProjects/staffClock/{staff_name}_records.pdf')
+        document = QPdfDocument(view_records)
+        if not document.load(file_path):
+            print(f"Failed to load PDF file: {file_path}")
+            return
+
+        # Create and set up the PDF viewer
+        pdf_view = QPdfView(view_records)
+        pdf_view.setPageMode(QPdfView.PageMode.MultiPage)
+        pdf_view.setDocument(document)
+        print(document)
+        print(document.status())
+
+        # Add the viewer to the dialog
+        layout = QVBoxLayout(view_records)
+        layout.addWidget(pdf_view)
+
+        view_records.exec()
+
+    def preparePrint(self):
+        name = self.name_entry.text().strip()
+        self.show_record()  # Generates the PDF
+        pdfName = f"{name}_records.pdf"
+        self.print_via_jetdirect(pdfName)
+
+    def generate_pdf_table(self, file_path, table_data, title):
+        """
+        Generate a PDF with a title and a table.
+        """
+        try:
+            # Create the PDF document
+            pdf = SimpleDocTemplate(file_path, pagesize=letter)
+
+            # Create a title
+            styles = getSampleStyleSheet()
+            title_style = styles['Title']
+            title_paragraph = Paragraph(title, title_style)
+
+            # Spacer between title and table
+            spacer = Spacer(1, 20)
+
+            # Create the table
+            table = Table(table_data)
+
+            # Add table styles
+            style = TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ])
+            table.setStyle(style)
+
+            # Build the PDF
+            pdf.build([title_paragraph, spacer, table])
+            print(f"PDF saved at {file_path}")
+        except Exception as e:
+            print(f"Failed to generate PDF: {e}")
 
 
 if __name__ == '__main__':
