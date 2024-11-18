@@ -2,10 +2,10 @@ import os
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout,
-    QHBoxLayout, QDialog, QMessageBox, QTableWidget, QTableWidgetItem, QMainWindow, QDialogButtonBox
+    QHBoxLayout, QDialog, QMessageBox, QTableWidget, QTableWidgetItem, QMainWindow, QDialogButtonBox, QGridLayout
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QPixmap, QIcon
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
 from reportlab.lib.pagesizes import letter
@@ -36,62 +36,87 @@ class StaffClockInOutSystem(QMainWindow):
 
         # Main layout
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(50, 50, 50, 50)  # Add padding around the main layout
         self.central_widget.setLayout(main_layout)
 
-        # Staff Code Label and Entry
-        staff_code_layout = QHBoxLayout()
+        # Logo Layout (Top-right alignment)
+        logo_layout = QHBoxLayout()
+        logo_label = QLabel()
+        pixmap = QPixmap("Logo.png")
+        logo_label.setPixmap(pixmap)
+        logo_label.setFixedSize(150, 80)  # Adjusted size
+        logo_label.setScaledContents(True)
+        logo_layout.addStretch()
+        logo_layout.addWidget(logo_label)
+        main_layout.addLayout(logo_layout)
+
+        # Spacer
+        main_layout.addSpacing(30)
+
+        # Staff Code Input Section
+        staff_code_layout = QVBoxLayout()
         staff_code_label = QLabel("Enter Staff Code:")
-        staff_code_label.setFont(QFont("Arial", 18))  # Set larger font for readability
+        staff_code_label.setFont(QFont("Segoe UI", 38, QFont.Weight.Bold))
+        staff_code_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         self.staff_code_entry = QLineEdit()
-        self.staff_code_entry.setFont(QFont("Arial", 16))  # Increase font size in input
+        self.staff_code_entry.setFont(QFont("Segoe UI", 26))
+        self.staff_code_entry.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.staff_code_entry.setPlaceholderText("Enter your 4-digit code")
+        self.staff_code_entry.setStyleSheet(
+            "background-color: #444; color: white; border: 1px solid #555; padding: 8px; border-radius: 5px;"
+        )
         self.staff_code_entry.textChanged.connect(self.on_staff_code_change)
+
+        self.greeting_label = QLabel("")
+        self.greeting_label.setFont(QFont("Segoe UI", 20, QFont.Weight.Bold))
+        self.greeting_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         staff_code_layout.addWidget(staff_code_label)
         staff_code_layout.addWidget(self.staff_code_entry)
+        staff_code_layout.addWidget(self.greeting_label)
         main_layout.addLayout(staff_code_layout)
 
-        # Greeting Label
-        self.greeting_label = QLabel("")
-        self.greeting_label.setFont(QFont("Arial", 20))
-        self.greeting_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(self.greeting_label)
+        # Spacer
+        main_layout.addSpacing(50)
 
-        # Clock In/Out Buttons with custom size and style
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(20)  # Space between buttons
+        # Buttons Layout
+        button_layout = QVBoxLayout()
+        button_layout.setSpacing(20)
 
+        # Define buttons as class attributes
         self.clock_in_button = QPushButton("Clock In")
-        self.clock_in_button.setFont(QFont("Arial", 18))
-        self.clock_in_button.setMinimumSize(200, 60)
-        self.clock_in_button.setStyleSheet("background-color: #4CAF50; color: white;")
+        self.clock_in_button.setFont(QFont("Segoe UI", 18))
+        self.clock_in_button.setMinimumSize(250, 60)
+        self.clock_in_button.setStyleSheet("background-color: #4CAF50; color: white; border-radius: 8px;")
         self.clock_in_button.clicked.connect(lambda: self.clock_action('in', self.staff_code_entry.text()))
         button_layout.addWidget(self.clock_in_button)
 
         self.clock_out_button = QPushButton("Clock Out")
-        self.clock_out_button.setFont(QFont("Arial", 18))
-        self.clock_out_button.setMinimumSize(200, 60)
-        self.clock_out_button.setStyleSheet("background-color: #F44336; color: white;")
+        self.clock_out_button.setFont(QFont("Segoe UI", 18))
+        self.clock_out_button.setMinimumSize(250, 60)
+        self.clock_out_button.setStyleSheet("background-color: #F44336; color: white; border-radius: 8px;")
         self.clock_out_button.clicked.connect(lambda: self.clock_action('out', self.staff_code_entry.text()))
         button_layout.addWidget(self.clock_out_button)
 
-        main_layout.addLayout(button_layout)
-
-        # Admin and Exit Buttons with larger size
         self.admin_button = QPushButton("Admin")
-        self.admin_button.setFont(QFont("Arial", 18))
-        self.admin_button.setMinimumSize(200, 60)
-        self.admin_button.setStyleSheet("background-color: #2196F3; color: white;")
+        self.admin_button.setFont(QFont("Segoe UI", 18))
+        self.admin_button.setMinimumSize(250, 60)
+        self.admin_button.setStyleSheet("background-color: #2196F3; color: white; border-radius: 8px;")
         self.admin_button.clicked.connect(self.open_admin_tab)
-        main_layout.addWidget(self.admin_button)
+        button_layout.addWidget(self.admin_button)
 
         self.exit_button = QPushButton("Exit")
-        self.exit_button.setFont(QFont("Arial", 18))
-        self.exit_button.setMinimumSize(200, 60)
-        self.exit_button.setStyleSheet("background-color: #555555; color: white;")
+        self.exit_button.setFont(QFont("Segoe UI", 18))
+        self.exit_button.setMinimumSize(250, 60)
+        self.exit_button.setStyleSheet("background-color: #555555; color: white; border-radius: 8px;")
         self.exit_button.clicked.connect(self.close)
-        main_layout.addWidget(self.exit_button)
+        button_layout.addWidget(self.exit_button)
 
+        main_layout.addLayout(button_layout)
+
+        # Set Background Style
+        self.setStyleSheet(
+            "background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 #2b2b2b, stop:1 #444); color: white;")
 
     def clock_action(self, action, staff_code):
         conn = sqlite3.connect('staff_hours.db')
@@ -195,6 +220,7 @@ class StaffClockInOutSystem(QMainWindow):
         admin_tab.setWindowTitle('Admin Page')
         admin_tab.setFixedSize(500,400)
 
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
 
         layout = QVBoxLayout(admin_tab)
         layout.setSpacing(20)  # Space between widgets in the dialog
@@ -238,32 +264,43 @@ class StaffClockInOutSystem(QMainWindow):
         admin_tab.exec()
 
     def add_staff(self):
+        # Create a dialog
         dlg = QDialog(self)
-        QBtn = (
-                QDialogButtonBox.StandardButton.Yes| QDialogButtonBox.StandardButton.No
-        )
-        dlg.buttonBox = QDialogButtonBox(QBtn)
-        dlg.buttonBox.accepted.connect(dlg.accepted)
-        dlg.buttonBox.rejected.connect(dlg.reject)
+        dlg.setWindowTitle('Add Staff Confirmation')
+
+        # Create a layout
         layout = QVBoxLayout(dlg)
+
+        # Add message to the layout
         message = QLabel("Are you sure you would like to add this user?")
         layout.addWidget(message)
-        layout.addWidget(dlg.buttonBox)
+
+        # Add dialog buttons (Yes and No)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Yes | QDialogButtonBox.StandardButton.No)
+        layout.addWidget(button_box)
+
+        # Connect signals for Yes and No buttons
+        button_box.accepted.connect(lambda: self.confirm_add_staff(dlg))  # Call confirm method
+        button_box.rejected.connect(lambda: self.reject_add_staff(dlg), )  # Close the dialog
+
         dlg.setLayout(layout)
-        dlg.setWindowTitle('Add Staff Confirmation')
         dlg.exec()
 
-    def accepted(self, s):
+    def confirm_add_staff(self, dlg):
+        # Fetch staff name from the input field
         staff_name = self.name_entry.text().strip()
         if staff_name:
+            # Generate a random unique staff code
             staff_code = random.randint(1000, 9999)
             conn = sqlite3.connect('staff_hours.db')
             c = conn.cursor()
 
+            # Ensure unique staff code
             while c.execute('SELECT * FROM staff WHERE code = ?', (staff_code,)).fetchone():
                 staff_code = random.randint(1000, 9999)
 
             try:
+                # Add the new staff member to the database
                 c.execute('INSERT INTO staff (name, code) VALUES (?, ?)', (staff_name, staff_code))
                 conn.commit()
                 QMessageBox.information(self, 'Success', f'Staff member {staff_name} added with code {staff_code}')
@@ -271,10 +308,14 @@ class StaffClockInOutSystem(QMainWindow):
                 QMessageBox.critical(self, 'Database Error', f'An error occurred: {e}')
             finally:
                 conn.close()
+            dlg.accept()  # Close the dialog after successful addition
         else:
             QMessageBox.critical(self, 'Invalid Input', 'Please enter a valid staff name')
-    def rejected(self):
+
+    def reject_add_staff(self, dlg):
         QMessageBox.critical(self, 'Rejected entry', 'Staff was not added to the list')
+        self.name_entry.clear()
+        dlg.close()
 
     def delete_staff(self):
         staff_name = self.name_entry.text().strip()
@@ -392,8 +433,14 @@ class StaffClockInOutSystem(QMainWindow):
             # Build the PDF
             pdf.build([title_paragraph, spacer, table])
             print(f"PDF saved at {file_path}")
+
+            self.name_entry.clear()
+            QMessageBox.information(self, 'Success', f'Sent to printer!')
         except Exception as e:
+            self.name_entry.clear()
             print(f"Failed to generate PDF: {e}")
+
+
 
 
 if __name__ == '__main__':
