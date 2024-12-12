@@ -1,0 +1,37 @@
+2024-12-12 13:08:11,008 - INFO - Application started.
+2024-12-12 13:08:15,816 - INFO - Opening admin tab
+2024-12-12 13:08:21,864 - INFO - Application started.
+2024-12-12 13:08:25,804 - INFO - Clock-in successful for staff code 2006 at 13:08
+2024-12-12 13:08:29,046 - INFO - Clock-out successful for staff code 2006 at 13:08
+2024-12-12 13:08:30,419 - INFO - Opening admin tab
+2024-12-12 13:08:38,454 - INFO - Staff member Dale added with code 7861
+2024-12-12 13:08:41,254 - INFO - Staff member Dale deleted
+2024-12-12 13:08:51,409 - INFO - Staff member Andrei Iacob records created
+2024-12-12 13:09:36,075 - INFO - Application started.
+2024-12-12 13:09:39,225 - INFO - Opening admin tab
+2024-12-12 13:09:47,408 - INFO - Staff member Andrei Iacob records created
+2024-12-12 13:09:47,412 - INFO - Table built for Andrei Iacob
+2024-12-12 13:09:48,695 - INFO - Staff member Andrei Iacob PDF created
+2024-12-12 13:09:53,584 - INFO - Start date for timesheet 22-10-2024, end date for timesheet 20-11-2024
+2024-12-12 13:09:53,586 - INFO - Fetched records for time sheet
+2024-12-12 13:09:53,596 - INFO - Built Timesheet for Andrei Iacob
+2024-12-12 13:09:53,601 - INFO - Built Timesheet for Cristina Iacob
+2024-12-12 13:09:55,012 - INFO - Timesheets generated
+2024-12-12 13:09:59,643 - INFO - Staff member Andrei Iacob records created
+2024-12-12 13:09:59,651 - INFO - Table built for Andrei Iacob
+2024-12-12 13:10:00,616 - INFO - Staff member Andrei Iacob PDF created
+2024-12-12 13:13:31,033 - INFO - Application started.
+2024-12-12 13:20:50,508 - INFO - Application started.
+2024-12-12 13:25:17,698 - INFO - Application started.
+2024-12-12 13:26:11,279 - INFO - Application started.
+2024-12-12 13:28:56,648 - INFO - Application started.
+2024-12-12 13:29:23,794 - INFO - Application started.
+2024-12-12 13:34:55,832 - INFO - Application started.
+2024-12-12 13:37:38,108 - INFO - Application started.
+2024-12-12 13:41:04,635 - INFO - Application started.
+2024-12-12 13:42:41,803 - INFO - Application started.
+2024-12-12 13:43:01,288 - INFO - Application started.
+2024-12-12 13:45:20,142 - INFO - Application started.
+2024-12-12 13:47:18,177 - INFO - Application started.
+2024-12-12 13:47:41,095 - INFO - Application started.
+2024-12-12 13:47:49,939 - INFO - Application started.
