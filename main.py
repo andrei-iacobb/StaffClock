@@ -1,9 +1,9 @@
 import os
 import sqlite3
-import datetime
 import random
 import socket
 import sys
+from datetime import datetime, timedelta
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QDialog, QMessageBox, QDialogButtonBox
@@ -12,17 +12,16 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QPixmap
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import letter, A4
 from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 
-
 class StaffClockInOutSystem(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Staff Clock In/Out System")
+        self.setWindowTitle("Staff Digital Timesheet System")
         self.showMaximized()
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
@@ -41,7 +40,7 @@ class StaffClockInOutSystem(QMainWindow):
         # Logo Layout (Top-right alignment)
         logo_layout = QHBoxLayout()
         logo_label = QLabel()
-        pixmap = QPixmap("Logo.png")
+        pixmap = QPixmap("ProgramData/Logo.png")
         logo_label.setPixmap(pixmap)
         logo_label.setFixedSize(150, 80)
         logo_label.setScaledContents(True)
@@ -183,10 +182,41 @@ class StaffClockInOutSystem(QMainWindow):
         elif staff_code == '654321':  # Exit code
             self.greeting_label.setText("Exit Mode Activated")
             self.exit_button.show()
+        elif staff_code == '111111':
+            self.greeting_label.setText("Fire!")
+            self.fire
         else:
             self.greeting_label.setText('')
             self.admin_button.hide()
             self.exit_button.hide()
+
+
+    def fire(self):
+        time_now = datetime.datetime.now().strftime('%Y-%m-%d')  # Today's date
+        print(f"Today's date: {time_now}")  # Debugging: print the date being queried
+
+        conn = sqlite3.connect('staff_hours.db')
+        c = conn.cursor()
+
+        # Test query to debug
+        c.execute('SELECT clock_in_time FROM clock_records')
+        all_records = c.fetchall()
+        print("All clock_in_time values in the database:")
+        for record in all_records:
+            print(record)
+
+        # Now attempt the original query
+        c.execute('SELECT staff_code, clock_in_time FROM clock_records WHERE DATE(clock_in_time) = ?', (time_now,))
+        records = c.fetchall()
+
+        if not records:
+            print("No records found for today's date.")
+        else:
+            print("Records for today:")
+            for record in records:
+                print(f"Staff Code: {record[0]}, Clock In Time: {record[1]}")
+
+        conn.close()
 
     def open_admin_tab(self):
         admin_tab = QDialog(self)
@@ -230,6 +260,13 @@ class StaffClockInOutSystem(QMainWindow):
         print_records_button.setStyleSheet("background-color: #967bb6; color: white;")
         print_records_button.clicked.connect(self.preparePrint)
         layout.addWidget(print_records_button)
+
+        generate_timesheet_button = QPushButton("Generate Timesheet")
+        generate_timesheet_button.setFont(QFont("Arial", 16))
+        generate_timesheet_button.setMinimumSize(150, 50)
+        generate_timesheet_button.setStyleSheet("background-color: #2196F3; color: white;")
+        generate_timesheet_button.clicked.connect(lambda: self.generate_all_timesheets(20))
+        layout.addWidget(generate_timesheet_button)
 
         admin_tab.exec()
 
@@ -289,7 +326,7 @@ class StaffClockInOutSystem(QMainWindow):
         return records
 
     def create_table_pdf(self, staff_name, records):
-        file_path = f"{staff_name}_records.pdf"
+        file_path = f"Timesheets/{staff_name}.pdf"
         table_data = [["Clock In Date", "Clock In Time", "Clock Out Date", "Clock Out Time"]]
         for record in records:
             clock_in = datetime.datetime.fromisoformat(record[0]) if record[0] else None
@@ -320,7 +357,7 @@ class StaffClockInOutSystem(QMainWindow):
         pdf.build([title_paragraph, spacer, table])
 
     def show_pdf(self, staff_name):
-        file_path = f"{staff_name}_records.pdf"
+        file_path = f"Timesheets/{staff_name}_records.pdf"
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             QMessageBox.critical(self, "Error", "The file is empty or does not exist.")
             return
@@ -345,7 +382,7 @@ class StaffClockInOutSystem(QMainWindow):
     def preparePrint(self):
         staff_name = self.name_entry.text().strip()
         if staff_name:
-            file_path = f"{staff_name}_records.pdf"
+            file_path = f"Timesheets/{staff_name}_records.pdf"
             self.print_via_jetdirect(file_path)
 
     def print_via_jetdirect(self, file_path):
@@ -361,6 +398,133 @@ class StaffClockInOutSystem(QMainWindow):
         except Exception as e:
             print(f"Failed to print PDF: {e}")
 
+    def get_date_range_for_timesheet(self, day_selected):
+        today = datetime.now()
+        if today.day < day_selected:
+            end_date = today.replace(day=day_selected) - timedelta(days=30)
+        else:
+            end_date = today.replace(day=day_selected)
+
+        start_date = end_date.replace(day=21) - timedelta(days=30)
+        return start_date, end_date
+
+    def fetch_timesheet_records(self, conn, start_date, end_date):
+        c = conn.cursor()
+        c.execute("""
+            SELECT s.name, s.role, c.clock_in_time, c.clock_out_time
+            FROM staff s
+            LEFT JOIN clock_records c ON s.code = c.staff_code
+            WHERE DATE(c.clock_in_time) BETWEEN ? AND ?
+            ORDER BY s.role, s.name, c.clock_in_time
+        """, (start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')))
+        records = c.fetchall()
+        return records
+
+    def generate_all_timesheets(self, day_selected):
+        # Get date range
+        start_date, end_date = self.get_date_range_for_timesheet(day_selected)
+
+        # Fetch records
+        conn = sqlite3.connect('staff_hours.db')
+        records = self.fetch_timesheet_records(conn, start_date, end_date)
+        conn.close()
+
+        if not records:
+            QMessageBox.information(self, "Info", "No records found for the selected period.")
+            return
+
+        # Organize records by staff
+        staff_data = {}
+        for name, role, clock_in, clock_out in records:
+            if name not in staff_data:
+                staff_data[name] = {"role": role, "records": []}
+            staff_data[name]["records"].append((clock_in, clock_out))
+
+        # Generate timesheets for all staff
+        for staff_name, details in staff_data.items():
+            self.generate_timesheet(staff_name, details["role"], start_date, end_date, details["records"])
+
+        QMessageBox.information(
+            self,
+            "Success",
+            f"Timesheets generated for the period {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')}"
+        )
+
+    def generate_timesheet(self, employee_name, role, start_date, end_date, records):
+        # Create the PDF file path
+        os.makedirs("Timesheets", exist_ok=True)
+        output_file = f"Timesheets/{employee_name.replace(' ', '_')}_timesheet.pdf"
+
+        # Create the PDF document
+        doc = SimpleDocTemplate(output_file, pagesize=A4)
+        elements = []
+
+        # Header
+        title = f"The Partnership in Care\nMONTHLY TIMESHEET"
+        name_line = f"NAME: {employee_name}"
+        role_line = f"ROLE: {role}"
+        date_line = f"DATE: {start_date.strftime('%d %B')} to {end_date.strftime('%d %B')} {end_date.year}"
+        signed_line = "SIGNED: ……………………………………………………….."
+
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph(title, getSampleStyleSheet()['Title']))
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph(name_line, getSampleStyleSheet()['Normal']))
+        elements.append(Paragraph(role_line, getSampleStyleSheet()['Normal']))
+        elements.append(Paragraph(date_line, getSampleStyleSheet()['Normal']))
+        elements.append(Spacer(1, 40))
+        elements.append(Paragraph(signed_line, getSampleStyleSheet()['Normal']))
+        elements.append(Spacer(1, 20))
+
+        # Table header
+        data = [
+            ["Date", "Day", "Clock In", "Clock Out", "Hours Worked", "Notes"]
+        ]
+
+        # Add rows for each day
+        for record in records:
+            clock_in = datetime.fromisoformat(record[0]) if record[0] else None
+            clock_out = datetime.fromisoformat(record[1]) if record[1] else None
+            hours_worked = (
+                (clock_out - clock_in).total_seconds() / 3600 if clock_in and clock_out else ""
+            )
+            data.append([
+                clock_in.strftime('%d-%m-%Y') if clock_in else '',
+                clock_in.strftime('%A') if clock_in else '',
+                clock_in.strftime('%H:%M') if clock_in else '',
+                clock_out.strftime('%H:%M') if clock_out else '',
+                f"{hours_worked:.2f}" if hours_worked else '',
+                ""
+            ])
+
+        # Add totals row
+        data.append(["Totals"] + [""] * 5)
+
+        # Create the table
+        table = Table(data, colWidths=[70, 70, 70, 70, 70, 100])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ]))
+        elements.append(table)
+
+        # Footer
+        footer_lines = [
+            "Checked by Administrator: ……………………………………………………….. Signed         ………………………………….. Date",
+            "Checked by Manager:           ……………………………………………………….. Signed       ……………………………………. Date"
+        ]
+        elements.append(Spacer(1, 40))
+        for line in footer_lines:
+            elements.append(Paragraph(line, getSampleStyleSheet()['Normal']))
+
+        # Build the PDF
+        doc.build(elements)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
