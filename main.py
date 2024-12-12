@@ -2,6 +2,7 @@ import os
 import sqlite3
 import random
 import socket
+import json
 import sys
 from datetime import datetime, timedelta
 from PyQt6.QtWidgets import (
@@ -25,9 +26,39 @@ class StaffClockInOutSystem(QMainWindow):
         self.showMaximized()
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
+
+        # Load settings
+        self.settings = self.load_settings()
         self.setup_ui()
         self.showFullScreen()
 
+        # Check for timesheet generation
+        self.check_timesheet_generation()
+
+    def load_settings(self):
+        settings_file = "ProgramData/settings.json"
+        default_settings = {"start_day": 21, "end_day": 20}
+
+        if os.path.exists(settings_file):
+            with open(settings_file, "r") as file:
+                return json.load(file)
+        else:
+            with open(settings_file, "w") as file:
+                json.dump(default_settings, file)
+            return default_settings
+
+    def save_settings(self):
+        with open("settings.json", "w") as file:
+            json.dump(self.settings, file)
+
+    def check_timesheet_generation(self):
+        today = datetime.now()
+        start_day = self.settings["start_day"]
+        end_day = self.settings["end_day"]
+
+        # Determine the end of the timesheet period
+        if today.day == end_day:
+            self.generate_all_timesheets(end_day)
     def setup_ui(self):
         # Setting up the central widget
         self.central_widget = QWidget()
@@ -184,7 +215,7 @@ class StaffClockInOutSystem(QMainWindow):
             self.exit_button.show()
         elif staff_code == '111111':
             self.greeting_label.setText("Fire!")
-            self.fire
+            self.fire()
         else:
             self.greeting_label.setText('')
             self.admin_button.hide()
@@ -218,10 +249,52 @@ class StaffClockInOutSystem(QMainWindow):
 
         conn.close()
 
+    def open_settings_menu(self):
+        settings_dialog = QDialog(self)
+        settings_dialog.setWindowTitle("Settings")
+        settings_dialog.setFixedSize(300, 200)
+
+        layout = QVBoxLayout(settings_dialog)
+        layout.setSpacing(20)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        start_label = QLabel("Start Day:")
+        self.start_day_input = QLineEdit(str(self.settings["start_day"]))
+        layout.addWidget(start_label)
+        layout.addWidget(self.start_day_input)
+
+        end_label = QLabel("End Day:")
+        self.end_day_input = QLineEdit(str(self.settings["end_day"]))
+        layout.addWidget(end_label)
+        layout.addWidget(self.end_day_input)
+
+        save_button = QPushButton("Save Settings")
+        save_button.clicked.connect(self.save_settings_from_menu)
+        layout.addWidget(save_button)
+
+        settings_dialog.exec()
+
+    def save_settings_from_menu(self):
+        try:
+            start_day = int(self.start_day_input.text())
+            end_day = int(self.end_day_input.text())
+
+            if not (1 <= start_day <= 31 and 1 <= end_day <= 31):
+                raise ValueError("Days must be between 1 and 31.")
+
+            self.settings["start_day"] = start_day
+            self.settings["end_day"] = end_day
+            self.save_settings()
+
+            QMessageBox.information(self, "Success", "Settings saved successfully.")
+        except ValueError as e:
+            QMessageBox.critical(self, "Error", f"Invalid input: {e}")
+
+
     def open_admin_tab(self):
         admin_tab = QDialog(self)
         admin_tab.setWindowTitle('Admin Page')
-        admin_tab.setFixedSize(500, 400)
+        admin_tab.setFixedSize(500, 500)
         layout = QVBoxLayout(admin_tab)
         layout.setSpacing(20)
         layout.setContentsMargins(30, 30, 30, 30)
@@ -267,6 +340,13 @@ class StaffClockInOutSystem(QMainWindow):
         generate_timesheet_button.setStyleSheet("background-color: #2196F3; color: white;")
         generate_timesheet_button.clicked.connect(lambda: self.generate_all_timesheets(20))
         layout.addWidget(generate_timesheet_button)
+
+        settings_button = QPushButton("Settings")
+        settings_button.setFont(QFont("Arial", 16))
+        settings_button.setMinimumSize(150, 50)
+        settings_button.setStyleSheet("background-color: #2196F3; color: white;")
+        settings_button.clicked.connect(self.open_settings_menu)
+        layout.addWidget(settings_button)
 
         admin_tab.exec()
 
