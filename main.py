@@ -22,6 +22,8 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 
+
+
 class StaffClockInOutSystem(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -76,6 +78,7 @@ class StaffClockInOutSystem(QMainWindow):
         # Determine the end of the timesheet period
         if today.day == end_day:
             self.generate_all_timesheets(end_day)
+
     def setup_ui(self):
         # Setting up the central widget
         self.central_widget = QWidget()
@@ -439,39 +442,42 @@ class StaffClockInOutSystem(QMainWindow):
             conn.close()
 
     def open_records_tab(self):
+        logging.debug("Starting open_records_tab function")
         staff_name = self.name_entry.text().strip()
+        logging.debug(f"Retrieved staff_name: {staff_name}")
         if not staff_name:
             QMessageBox.critical(self, "Error", "Please enter a valid staff name.")
-            logging.error(f"Error: {staff_name} invalid name")
+            logging.error(f"Error: Invalid staff name '{staff_name}'")
             return
 
-        records = self.get_records(staff_name)
-        if records:
-            self.create_table_pdf(staff_name, records)
-            self.show_pdf(staff_name)
-            logging.info(f'Staff member {staff_name} PDF created')
+        try:
+            conn = sqlite3.connect('staff_hours.db')
+            logging.debug("Database connection established")
+            cursor = conn.cursor()
+            cursor.execute('SELECT code FROM staff WHERE name = ?', (staff_name,))
+            staff = cursor.fetchone()
+            logging.debug(f"Staff record fetched: {staff}")
 
-    def get_records(self, staff_name):
-        conn = sqlite3.connect('staff_hours.db')
-        c = conn.cursor()
-        c.execute('SELECT code FROM staff WHERE name = ?', (staff_name,))
-        staff = c.fetchone()
-        if not staff:
+            if not staff:
+                QMessageBox.critical(self, "Error", "Staff member not found.")
+                logging.error(f"Error: Staff member '{staff_name}' not found.")
+                return
+
+            staff_code = staff[0]
+            cursor.execute('SELECT clock_in_time, clock_out_time FROM clock_records WHERE staff_code = ?',
+                           (staff_code,))
+            records = cursor.fetchall()
+            logging.debug(f"Records retrieved: {records}")
+            logging.info(f"Records retrieved for staff '{staff_name}'.")
+
+        finally:
             conn.close()
-            QMessageBox.critical(self, "Error", "Staff member not found")
-            logging.error(f'Staff member {staff_name} not found')
-            return None
+            logging.debug("Database connection closed")
 
-        staff_code = staff[0]
-        c.execute('SELECT clock_in_time, clock_out_time FROM clock_records WHERE staff_code = ?', (staff_code,))
-        records = c.fetchall()
-        conn.close()
-        logging.info(f'Staff member {staff_name} records created')
-        return records
-
-    def create_table_pdf(self, staff_name, records):
-        file_path = f"Timesheets/{staff_name}.pdf"
+        file_path = os.path.abspath(f"TempData/{staff_name}.pdf")
+        logging.debug(f"Resolved file_path: {file_path}")
         table_data = [["Clock In Date", "Clock In Time", "Clock Out Date", "Clock Out Time"]]
+
         for record in records:
             clock_in = datetime.fromisoformat(record[0]) if record[0] else None
             clock_out = datetime.fromisoformat(record[1]) if record[1] else None
@@ -481,49 +487,58 @@ class StaffClockInOutSystem(QMainWindow):
                 clock_out.strftime('%d-%m-%Y') if clock_out else '',
                 clock_out.strftime('%H:%M:%S') if clock_out else '',
             ])
+        logging.debug(f"Constructed table_data: {table_data}")
 
-        pdf = SimpleDocTemplate(file_path, pagesize=letter)
-        styles = getSampleStyleSheet()
-        title_style = styles['Title']
-        title_paragraph = Paragraph(f"Records for {staff_name}", title_style)
-        spacer = Spacer(1, 20)
-        table = Table(table_data)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ]))
-        pdf.build([title_paragraph, spacer, table])
-        logging.info(f'Table built for {staff_name}')
+        try:
+            pdf = SimpleDocTemplate(file_path, pagesize=letter)
+            styles = getSampleStyleSheet()
+            pdf.build([
+                Paragraph(f"Records for {staff_name}", styles['Title']),
+                Spacer(1, 20),
+                Table(table_data, style=[
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 12),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ])
+            ])
+            logging.info(f"PDF created successfully at '{file_path}'.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to create PDF: {e}")
+            logging.error(f"PDF creation error: {e}")
+            return
 
-    def show_pdf(self, staff_name):
-        file_path = f"Timesheets/{staff_name}_records.pdf"
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-            QMessageBox.critical(self, "Error", "The file is empty or does not exist.")
+            QMessageBox.critical(self, "Error", "The PDF file is empty or missing.")
+            logging.error(f"PDF file '{file_path}' is empty or missing.")
             return
 
         document = QPdfDocument(self)
+        logging.debug(f"Attempting to load PDF from: {file_path}")
         if document.load(file_path) != QPdfDocument.Status.Ready:
             QMessageBox.critical(self, "Error", "Failed to load the PDF document.")
+            logging.error(f"Failed to load PDF file '{file_path}'.")
             return
 
-        view_dialog = QDialog(self)
-        view_dialog.setWindowTitle(f"{staff_name} - Records")
-        view_dialog.setGeometry(100, 100, 600, 800)
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"{staff_name} - Records")
+        dialog.setGeometry(100, 100, 600, 800)
+        logging.debug("Dialog window initialized")
 
-        pdf_view = QPdfView(view_dialog)
-        pdf_view.setPageMode(QPdfView.PageMode.MultiPage)
+        pdf_view = QPdfView(dialog)
         pdf_view.setDocument(document)
+        logging.debug("PDF document set in QPdfView")
 
-        layout = QVBoxLayout(view_dialog)
+        layout = QVBoxLayout(dialog)
         layout.addWidget(pdf_view)
-        view_dialog.exec()
-        logging.info(f'PDF view for {staff_name} created')
+        logging.debug("Layout added to dialog")
+
+        dialog.exec()
+        logging.info(f"Displayed PDF for staff '{staff_name}'.")
 
     def preparePrint(self):
         staff_name = self.name_entry.text().strip()

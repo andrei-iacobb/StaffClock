@@ -1,37 +1,42 @@
-2024-12-12 13:08:11,008 - INFO - Application started.
-2024-12-12 13:08:15,816 - INFO - Opening admin tab
-2024-12-12 13:08:21,864 - INFO - Application started.
-2024-12-12 13:08:25,804 - INFO - Clock-in successful for staff code 2006 at 13:08
-2024-12-12 13:08:29,046 - INFO - Clock-out successful for staff code 2006 at 13:08
-2024-12-12 13:08:30,419 - INFO - Opening admin tab
-2024-12-12 13:08:38,454 - INFO - Staff member Dale added with code 7861
-2024-12-12 13:08:41,254 - INFO - Staff member Dale deleted
-2024-12-12 13:08:51,409 - INFO - Staff member Andrei Iacob records created
-2024-12-12 13:09:36,075 - INFO - Application started.
-2024-12-12 13:09:39,225 - INFO - Opening admin tab
-2024-12-12 13:09:47,408 - INFO - Staff member Andrei Iacob records created
-2024-12-12 13:09:47,412 - INFO - Table built for Andrei Iacob
-2024-12-12 13:09:48,695 - INFO - Staff member Andrei Iacob PDF created
-2024-12-12 13:09:53,584 - INFO - Start date for timesheet 22-10-2024, end date for timesheet 20-11-2024
-2024-12-12 13:09:53,586 - INFO - Fetched records for time sheet
-2024-12-12 13:09:53,596 - INFO - Built Timesheet for Andrei Iacob
-2024-12-12 13:09:53,601 - INFO - Built Timesheet for Cristina Iacob
-2024-12-12 13:09:55,012 - INFO - Timesheets generated
-2024-12-12 13:09:59,643 - INFO - Staff member Andrei Iacob records created
-2024-12-12 13:09:59,651 - INFO - Table built for Andrei Iacob
-2024-12-12 13:10:00,616 - INFO - Staff member Andrei Iacob PDF created
-2024-12-12 13:13:31,033 - INFO - Application started.
-2024-12-12 13:20:50,508 - INFO - Application started.
-2024-12-12 13:25:17,698 - INFO - Application started.
-2024-12-12 13:26:11,279 - INFO - Application started.
-2024-12-12 13:28:56,648 - INFO - Application started.
-2024-12-12 13:29:23,794 - INFO - Application started.
-2024-12-12 13:34:55,832 - INFO - Application started.
-2024-12-12 13:37:38,108 - INFO - Application started.
-2024-12-12 13:41:04,635 - INFO - Application started.
-2024-12-12 13:42:41,803 - INFO - Application started.
-2024-12-12 13:43:01,288 - INFO - Application started.
-2024-12-12 13:45:20,142 - INFO - Application started.
-2024-12-12 13:47:18,177 - INFO - Application started.
-2024-12-12 13:47:41,095 - INFO - Application started.
-2024-12-12 13:47:49,939 - INFO - Application started.
+2024-12-12 16:53:10,270 - INFO - Application started.
+2024-12-12 16:53:11,375 - INFO - Opening admin tab
+2024-12-12 16:53:14,759 - INFO - Staff member Andrei Iacob records retrieved
+2024-12-12 16:53:14,768 - INFO - PDF file created at /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 16:53:14,770 - INFO - Attempting to load PDF from: /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 16:57:10,931 - INFO - Application started.
+2024-12-12 16:57:12,600 - INFO - Opening admin tab
+2024-12-12 16:57:16,577 - INFO - Staff member Andrei Iacob records retrieved
+2024-12-12 16:57:16,586 - INFO - PDF file created at /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 16:57:16,588 - INFO - Attempting to load PDF from: /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 16:57:18,043 - ERROR - Failed to load PDF from /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 16:57:32,331 - INFO - Opening admin tab
+2024-12-12 16:57:38,085 - INFO - Staff member Andrei Iacob records retrieved
+2024-12-12 16:57:38,093 - INFO - PDF file created at /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 16:57:38,093 - INFO - Attempting to load PDF from: /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 16:57:39,151 - ERROR - Failed to load PDF from /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 17:03:19,138 - INFO - Application started.
+2024-12-12 17:03:20,941 - INFO - Opening admin tab
+2024-12-12 17:03:26,743 - INFO - Staff member Andrei Iacob records retrieved
+2024-12-12 17:03:26,751 - INFO - PDF file created at /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 17:03:26,753 - INFO - Attempting to load PDF from: /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 17:03:28,076 - ERROR - Failed to load PDF from /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 17:10:02,126 - INFO - Application started.
+2024-12-12 17:10:18,057 - INFO - Application started.
+2024-12-12 17:10:19,472 - INFO - Opening admin tab
+2024-12-12 17:10:24,153 - DEBUG - Starting open_records_tab function
+2024-12-12 17:10:24,153 - DEBUG - Retrieved staff_name: Andrei Iacob
+2024-12-12 17:10:24,153 - DEBUG - Database connection established
+2024-12-12 17:10:24,154 - DEBUG - Staff record fetched: ('2006',)
+2024-12-12 17:10:24,154 - DEBUG - Records retrieved: [('2024-11-03T21:54:09.477890', '2024-11-03T21:54:12.695073'), ('2024-11-08T09:48:41.465196', '2024-11-08T09:48:43.511034'), ('2024-11-08T09:48:41.465196', '2024-11-08T09:48:43.511034'), ('2024-11-08T09:52:10.362109', '2024-11-08T09:52:12.484197'), ('2024-11-08T10:00:01.524899', '2024-11-08T10:00:03.623105'), ('2024-11-08T10:15:23.784513', '2024-11-08T10:15:25.894621'), ('2024-11-08T10:30:45.914300', '2024-11-08T10:30:47.968412'), ('2024-11-08T10:45:56.452108', '2024-11-08T10:45:58.563298'), ('2024-11-08T11:05:19.374105', '2024-11-08T11:05:21.478213'), ('2024-11-08T11:20:43.512403', '2024-11-08T11:20:45.615307'), ('2024-11-08T11:35:04.659213', '2024-11-08T11:35:06.782319'), ('2024-11-08T11:50:27.784505', '2024-11-08T11:50:29.893612'), ('2024-11-15T13:54:05.147936', '2024-12-12T13:02:25.229216'), ('2024-11-15T14:21:41.530832', '2024-12-12T13:08:28.047767'), ('2024-11-17T07:16:30.875606', None), ('2024-11-25T10:56:36.276028', None), ('2024-12-12T13:01:36.226303', None), ('2024-12-12T13:01:58.610506', None), ('2024-12-12T13:08:25.033698', None)]
+2024-12-12 17:10:24,154 - INFO - Records retrieved for staff 'Andrei Iacob'.
+2024-12-12 17:10:24,155 - DEBUG - Database connection closed
+2024-12-12 17:10:24,155 - DEBUG - Resolved file_path: /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 17:10:24,157 - DEBUG - Constructed table_data: [['Clock In Date', 'Clock In Time', 'Clock Out Date', 'Clock Out Time'], ['03-11-2024', '21:54:09', '03-11-2024', '21:54:12'], ['08-11-2024', '09:48:41', '08-11-2024', '09:48:43'], ['08-11-2024', '09:48:41', '08-11-2024', '09:48:43'], ['08-11-2024', '09:52:10', '08-11-2024', '09:52:12'], ['08-11-2024', '10:00:01', '08-11-2024', '10:00:03'], ['08-11-2024', '10:15:23', '08-11-2024', '10:15:25'], ['08-11-2024', '10:30:45', '08-11-2024', '10:30:47'], ['08-11-2024', '10:45:56', '08-11-2024', '10:45:58'], ['08-11-2024', '11:05:19', '08-11-2024', '11:05:21'], ['08-11-2024', '11:20:43', '08-11-2024', '11:20:45'], ['08-11-2024', '11:35:04', '08-11-2024', '11:35:06'], ['08-11-2024', '11:50:27', '08-11-2024', '11:50:29'], ['15-11-2024', '13:54:05', '12-12-2024', '13:02:25'], ['15-11-2024', '14:21:41', '12-12-2024', '13:08:28'], ['17-11-2024', '07:16:30', '', ''], ['25-11-2024', '10:56:36', '', ''], ['12-12-2024', '13:01:36', '', ''], ['12-12-2024', '13:01:58', '', ''], ['12-12-2024', '13:08:25', '', '']]
+2024-12-12 17:10:24,165 - INFO - PDF created successfully at '/Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf'.
+2024-12-12 17:10:24,166 - DEBUG - Attempting to load PDF from: /Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf
+2024-12-12 17:10:25,458 - ERROR - Failed to load PDF file '/Users/andreiiacob/StaffClock/TempData/Andrei Iacob.pdf'.
+2024-12-12 18:36:10,707 - INFO - Application started.
+2024-12-12 18:36:25,904 - INFO - Opening admin tab
+2024-12-12 18:36:56,282 - INFO - Opening admin tab
+2024-12-12 18:37:03,524 - INFO - Application started.
+2024-12-12 18:37:06,272 - INFO - Opening admin tab
