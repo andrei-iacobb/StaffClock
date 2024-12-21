@@ -7,7 +7,6 @@ import json
 import sys
 from datetime import datetime, timedelta
 from os import mkdir, write
-
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QDialog, QMessageBox, QDialogButtonBox
@@ -264,12 +263,16 @@ class StaffClockInOutSystem(QMainWindow):
 
 
     def fire(self):
+        logging.info("Fire system triggerd!")
+        logging.info("Gathering time right now.")
         time_now = datetime.now().strftime('%Y-%m-%d')  # Today's date
         print(f"Today's date: {time_now}")  # Debugging: print the date being queried
 
+        logging.info("Connecting to database")
         conn = sqlite3.connect('staff_hours.db')
         c = conn.cursor()
 
+        logging.info("Executing SQL command!")
         c.execute('''
             SELECT s.name, c.clock_in_time
             FROM clock_records c
@@ -304,8 +307,10 @@ class StaffClockInOutSystem(QMainWindow):
                 elements.append(Paragraph(f"Name: {name}, Clock In Time: {readable_time}", styles['Normal']))
                 elements.append(Spacer(1, 6))
 
+            logging.info("Building document!")
             doc.build(elements)
 
+            logging.info("Exiting Database")
             conn.close()
 
     def open_settings_menu(self):
@@ -519,7 +524,7 @@ class StaffClockInOutSystem(QMainWindow):
 
         document = QPdfDocument(self)
         logging.debug(f"Attempting to load PDF from: {file_path}")
-        if document.load(file_path) != QPdfDocument.Status.Ready:
+        if document.load(os.path.abspath(file_path)) != QPdfDocument.Status.Ready:
             QMessageBox.critical(self, "Error", "Failed to load the PDF document.")
             logging.error(f"Failed to load PDF file '{file_path}'.")
             return
@@ -610,12 +615,7 @@ class StaffClockInOutSystem(QMainWindow):
         for staff_name, details in staff_data.items():
             self.generate_timesheet(staff_name, details["role"], start_date, end_date, details["records"])
 
-        QMessageBox.information(
-            self,
-            "Success",
-            f"Timesheets generated for the period {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')}"
-        )
-        logging.info("Timesheets generated")
+        logging.info(f"Timesheets generated for the period {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')}")
 
     def generate_timesheet(self, employee_name, role, start_date, end_date, records):
         # Create the PDF file path
