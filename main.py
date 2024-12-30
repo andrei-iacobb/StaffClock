@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QDialog, QMessageBox, QDialogButtonBox
 )
-from PyQt6.QtCore import Qt, QTimer, QTime
+from PyQt6.QtCore import Qt, QTimer, QTime, QSize
 from PyQt6.QtGui import QFont, QPixmap, QKeyEvent
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
@@ -482,7 +482,20 @@ class StaffClockInOutSystem(QMainWindow):
         settings_button.clicked.connect(self.open_settings_menu)
         layout.addWidget(settings_button)
 
+        windowed_button = QPushButton("Enter Windowed Mode")
+        windowed_button.setFont(QFont("Arial", 16))
+        windowed_button.setMinimumSize(150, 50)
+        windowed_button.setStyleSheet("background-color: #2196F3; color: white;")
+        windowed_button.clicked.connect(self.windowed)
+        layout.addWidget(windowed_button)
+
         admin_tab.exec()
+
+    def windowed(self):
+        self.showNormal()
+        self.setFixedSize(QSize(600,600))
+        self.setWindowFlags(Qt.WindowType.Window)
+        self.show()
 
     def add_staff(self):
         staff_name = self.name_entry.text().strip()
