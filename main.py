@@ -1,9 +1,15 @@
 import os
+import platform
 import sqlite3
+import datetime
 import random
 import socket
+import keyboard
+import pyglet
 import logging
+from threading import Thread
 import json
+import time
 import sys
 from datetime import datetime, timedelta
 from os import mkdir, write
@@ -12,7 +18,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QDialog, QMessageBox, QDialogButtonBox
 )
 from PyQt6.QtCore import Qt, QTimer, QTime
-from PyQt6.QtGui import QFont, QPixmap
+from PyQt6.QtGui import QFont, QPixmap, QKeyEvent
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
 from reportlab.lib.pagesizes import letter, A4
@@ -21,6 +27,69 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 
+tempPath = ""
+permanentPath = ""
+databasePath = ""
+settingsFilePath = ""
+log_file = ""
+logoPath = ""
+
+
+def get_os_specific_path():
+    global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logoPath
+
+    def find_file(file_name, start_path="."):
+        for root, dirs, files in os.walk(start_path):
+            if file_name in files:
+                return os.path.join(root, file_name)
+        return None
+
+    def find_directory(dir_name, start_path="."):
+        for root, dirs, files in os.walk(start_path):
+            if dir_name in dirs:
+                return os.path.join(root, dir_name)
+        return None
+
+    # Identify base directory based on OS
+    base_path = os.getcwd()  # Get current working directory
+    if platform.system() == "Darwin":
+        # macOS paths
+        tempPath = find_directory("TempData", base_path) or os.path.join(base_path, "TempData")
+        permanentPath = find_directory("Timesheets", base_path) or os.path.join(base_path, "Timesheets")
+    elif platform.system() == "Windows":
+        # Windows paths
+        tempPath = find_directory("TempData", base_path) or os.path.join(base_path, "TempData")
+        permanentPath = find_directory("Timesheets", base_path) or os.path.join(base_path, "Timesheets")
+    else:
+        raise OSError("Unsupported Operating System")
+
+    # Ensure directories exist
+    os.makedirs(tempPath, exist_ok=True)
+    os.makedirs(permanentPath, exist_ok=True)
+
+    # Find files in the directory tree
+    program_data_path = find_directory("ProgramData", base_path)
+    if not program_data_path:
+        raise FileNotFoundError("ProgramData folder not found in the project structure.")
+
+    settingsFilePath = find_file("settings.json", program_data_path) or os.path.join(program_data_path, "settings.json")
+    log_file = find_file("staff_clock_system.log", program_data_path) or os.path.join(program_data_path, "staff_clock_system.log")
+    logoPath = find_file("Logo.png", program_data_path) or os.path.join(program_data_path, "Logo.png")
+    databasePath = find_file("staff_hours.db", program_data_path) or os.path.join(program_data_path, "staff_hours.db")
+
+    # Create missing files with defaults
+    if not os.path.exists(settingsFilePath):
+        default_settings = {"start_day": 21, "end_day": 20}
+        with open(settingsFilePath, "w") as file:
+            json.dump(default_settings, file)
+
+    if not os.path.exists(log_file):
+        open(log_file, "a").close()
+
+    if not os.path.exists(logoPath):
+        raise FileNotFoundError(f"Logo file not found at {logoPath}.")
+    if not os.path.exists(databasePath):
+        raise FileNotFoundError(f"Database file not found at {databasePath}.")
 
 
 class StaffClockInOutSystem(QMainWindow):
@@ -35,7 +104,7 @@ class StaffClockInOutSystem(QMainWindow):
         self.settings = self.load_settings()
         self.setup_ui()
         self.showFullScreen()
-        log_file = "ProgramData/staff_clock_system.log"
+
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
         logging.basicConfig(
@@ -54,7 +123,7 @@ class StaffClockInOutSystem(QMainWindow):
         self.clock_label.setText(current_time)
 
     def load_settings(self):
-        settings_file = "ProgramData/settings.json"
+        settings_file = settingsFilePath
         default_settings = {"start_day": 21, "end_day": 20}
 
         if os.path.exists(settings_file):
@@ -108,7 +177,7 @@ class StaffClockInOutSystem(QMainWindow):
 
         # Logo Layout (Top-right alignment)
         logo_label = QLabel()
-        pixmap = QPixmap("ProgramData/Logo.png")
+        pixmap = QPixmap(logoPath)
         logo_label.setPixmap(pixmap)
         logo_label.setFixedSize(150, 80)
         logo_label.setScaledContents(True)
@@ -195,7 +264,7 @@ class StaffClockInOutSystem(QMainWindow):
         )
 
     def clock_action(self, action, staff_code):
-        conn = sqlite3.connect('staff_hours.db')
+        conn = sqlite3.connect(databasePath)
         c = conn.cursor()
 
         # Check if the staff member exists
@@ -238,7 +307,7 @@ class StaffClockInOutSystem(QMainWindow):
     def on_staff_code_change(self):
         staff_code = self.staff_code_entry.text()
         if len(staff_code) == 4 and staff_code.isdigit():
-            conn = sqlite3.connect('staff_hours.db')
+            conn = sqlite3.connect(databasePath)
             c = conn.cursor()
             c.execute('SELECT name FROM staff WHERE code = ?', (staff_code,))
             staff = c.fetchone()
@@ -269,7 +338,7 @@ class StaffClockInOutSystem(QMainWindow):
         print(f"Today's date: {time_now}")  # Debugging: print the date being queried
 
         logging.info("Connecting to database")
-        conn = sqlite3.connect('staff_hours.db')
+        conn = sqlite3.connect(databasePath)
         c = conn.cursor()
 
         logging.info("Executing SQL command!")
@@ -419,7 +488,7 @@ class StaffClockInOutSystem(QMainWindow):
         staff_name = self.name_entry.text().strip()
         if staff_name:
             staff_code = random.randint(1000, 9999)
-            conn = sqlite3.connect('staff_hours.db')
+            conn = sqlite3.connect(databasePath)
             c = conn.cursor()
             while c.execute('SELECT * FROM staff WHERE code = ?', (staff_code,)).fetchone():
                 staff_code = random.randint(1000, 9999)
@@ -437,7 +506,7 @@ class StaffClockInOutSystem(QMainWindow):
     def remove_staff(self):
         staff_name = self.name_entry.text().strip()
         if staff_name:
-            conn = sqlite3.connect('staff_hours.db')
+            conn = sqlite3.connect(databasePath)
             c = conn.cursor()
             if c.execute('SELECT * FROM staff WHERE name = ?', (staff_name,)).fetchone():
                 c.execute('DELETE FROM staff WHERE name = ?', (staff_name,))
@@ -446,104 +515,108 @@ class StaffClockInOutSystem(QMainWindow):
                 logging.info(f'Staff member {staff_name} deleted')
             conn.close()
 
+    def generate_pdf(self, file_path, staff_name, records):
+        """Generate a PDF for the given staff member and save it to file_path."""
+        try:
+            pdf = SimpleDocTemplate(file_path)
+            styles = getSampleStyleSheet()
+
+            elements = [Paragraph(f"Records for {staff_name}", styles['Title']), Spacer(1, 20)]
+            table_data = [["Clock In Date", "Clock In Time", "Clock Out Date", "Clock Out Time"]]
+
+            for record in records:
+                clock_in = datetime.fromisoformat(record[0]) if record[0] else None
+                clock_out = datetime.fromisoformat(record[1]) if record[1] else None
+                table_data.append([
+                    clock_in.strftime('%d-%m-%Y') if clock_in else '',
+                    clock_in.strftime('%H:%M:%S') if clock_in else '',
+                    clock_out.strftime('%d-%m-%Y') if clock_out else '',
+                    clock_out.strftime('%H:%M:%S') if clock_out else '',
+                ])
+
+            table = Table(table_data, style=[
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ])
+            elements.append(table)
+
+            pdf.build(elements)
+            logging.info(f"PDF created successfully at '{file_path}'.")
+        except Exception as e:
+            logging.error(f"Failed to create PDF: {e}")
+            raise
+
+    def open_pdf(self, file_path):
+        """Open the generated PDF using the default system viewer."""
+        try:
+            os.startfile(file_path)  # Windows-specific method
+            logging.info(f"Opened PDF at '{file_path}' using the default viewer.")
+        except Exception as e:
+            logging.error(f"Failed to open PDF: {e}")
+            raise
+
+    def delete_pdf_after_delay(self, file_path, delay=10):
+        """Delete the PDF file after a delay."""
+        def delete_file():
+            time.sleep(delay)
+            try:
+                os.remove(file_path)
+                logging.info(f"Temporary PDF file '{file_path}' deleted after delay.")
+            except Exception as e:
+                logging.error(f"Failed to delete temporary file '{file_path}': {e}")
+
+        Thread(target=delete_file, daemon=True).start()
+
     def open_records_tab(self):
+        """Main function to handle PDF generation, opening, and deletion."""
         logging.debug("Starting open_records_tab function")
         staff_name = self.name_entry.text().strip()
-        logging.debug(f"Retrieved staff_name: {staff_name}")
         if not staff_name:
             QMessageBox.critical(self, "Error", "Please enter a valid staff name.")
             logging.error(f"Error: Invalid staff name '{staff_name}'")
             return
 
         try:
-            conn = sqlite3.connect('staff_hours.db')
-            logging.debug("Database connection established")
+            conn = sqlite3.connect(databasePath)
             cursor = conn.cursor()
             cursor.execute('SELECT code FROM staff WHERE name = ?', (staff_name,))
             staff = cursor.fetchone()
-            logging.debug(f"Staff record fetched: {staff}")
 
             if not staff:
                 QMessageBox.critical(self, "Error", "Staff member not found.")
-                logging.error(f"Error: Staff member '{staff_name}' not found.")
+                logging.error(f"Staff member '{staff_name}' not found.")
                 return
 
             staff_code = staff[0]
             cursor.execute('SELECT clock_in_time, clock_out_time FROM clock_records WHERE staff_code = ?',
                            (staff_code,))
             records = cursor.fetchall()
-            logging.debug(f"Records retrieved: {records}")
-            logging.info(f"Records retrieved for staff '{staff_name}'.")
 
         finally:
             conn.close()
-            logging.debug("Database connection closed")
 
-        file_path = os.path.abspath(f"TempData/{staff_name}.pdf")
-        logging.debug(f"Resolved file_path: {file_path}")
-        table_data = [["Clock In Date", "Clock In Time", "Clock Out Date", "Clock Out Time"]]
+        if not records:
+            QMessageBox.information(self, "Info", "No records found for this staff member.")
+            logging.warning(f"No records found for staff '{staff_name}'.")
+            return
 
-        for record in records:
-            clock_in = datetime.fromisoformat(record[0]) if record[0] else None
-            clock_out = datetime.fromisoformat(record[1]) if record[1] else None
-            table_data.append([
-                clock_in.strftime('%d-%m-%Y') if clock_in else '',
-                clock_in.strftime('%H:%M:%S') if clock_in else '',
-                clock_out.strftime('%d-%m-%Y') if clock_out else '',
-                clock_out.strftime('%H:%M:%S') if clock_out else '',
-            ])
-        logging.debug(f"Constructed table_data: {table_data}")
+        # Path for the temporary PDF
+        file_path = os.path.abspath(os.path.join(tempPath, f"{staff_name}.pdf"))
 
         try:
-            pdf = SimpleDocTemplate(file_path, pagesize=letter)
-            styles = getSampleStyleSheet()
-            pdf.build([
-                Paragraph(f"Records for {staff_name}", styles['Title']),
-                Spacer(1, 20),
-                Table(table_data, style=[
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 12),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ])
-            ])
-            logging.info(f"PDF created successfully at '{file_path}'.")
+            # Generate, open, and schedule deletion of the PDF
+            self.generate_pdf(file_path, staff_name, records)
+            self.open_pdf(file_path)
+            self.delete_pdf_after_delay(file_path, delay=10)  # Delete after 60 seconds
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to create PDF: {e}")
-            logging.error(f"PDF creation error: {e}")
-            return
+            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
 
-        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-            QMessageBox.critical(self, "Error", "The PDF file is empty or missing.")
-            logging.error(f"PDF file '{file_path}' is empty or missing.")
-            return
-
-        document = QPdfDocument(self)
-        logging.debug(f"Attempting to load PDF from: {file_path}")
-        if document.load(os.path.abspath(file_path)) != QPdfDocument.Status.Ready:
-            QMessageBox.critical(self, "Error", "Failed to load the PDF document.")
-            logging.error(f"Failed to load PDF file '{file_path}'.")
-            return
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f"{staff_name} - Records")
-        dialog.setGeometry(100, 100, 600, 800)
-        logging.debug("Dialog window initialized")
-
-        pdf_view = QPdfView(dialog)
-        pdf_view.setDocument(document)
-        logging.debug("PDF document set in QPdfView")
-
-        layout = QVBoxLayout(dialog)
-        layout.addWidget(pdf_view)
-        logging.debug("Layout added to dialog")
-
-        dialog.exec()
-        logging.info(f"Displayed PDF for staff '{staff_name}'.")
 
     def preparePrint(self):
         staff_name = self.name_entry.text().strip()
@@ -596,7 +669,7 @@ class StaffClockInOutSystem(QMainWindow):
         start_date, end_date = self.get_date_range_for_timesheet(day_selected)
 
         # Fetch records
-        conn = sqlite3.connect('staff_hours.db')
+        conn = sqlite3.connect(databasePath)
         records = self.fetch_timesheet_records(conn, start_date, end_date)
         conn.close()
 
@@ -620,7 +693,7 @@ class StaffClockInOutSystem(QMainWindow):
     def generate_timesheet(self, employee_name, role, start_date, end_date, records):
         # Create the PDF file path
         os.makedirs("Timesheets", exist_ok=True)
-        output_file = f"Timesheets/{employee_name.replace(' ', '_')}_timesheet.pdf"
+        output_file = f"{permanentPath}{employee_name.replace(' ', '_')}_timesheet.pdf"
 
         # Create the PDF document
         doc = SimpleDocTemplate(output_file, pagesize=A4)
@@ -695,6 +768,7 @@ class StaffClockInOutSystem(QMainWindow):
         logging.info(f"Built Timesheet for {employee_name}")
 
 if __name__ == '__main__':
+    get_os_specific_path()
     app = QApplication(sys.argv)
     window = StaffClockInOutSystem()
     window.show()
