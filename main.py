@@ -17,8 +17,8 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QDialog, QMessageBox, QDialogButtonBox
 )
-from PyQt6.QtCore import Qt, QTimer, QTime, QSize
-from PyQt6.QtGui import QFont, QPixmap, QKeyEvent
+from PyQt6.QtCore import Qt, QTimer, QTime
+from PyQt6.QtGui import QFont, QPixmap
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
 from reportlab.lib.pagesizes import letter, A4
@@ -26,6 +26,7 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
+from Background_tasks import TimesheetCheckerThread
 
 tempPath = ""
 permanentPath = ""
@@ -99,13 +100,26 @@ class StaffClockInOutSystem(QMainWindow):
         self.showMaximized()
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
+        logging.info("UI setup complete.")
+
+        self.isWindowed = False
 
         # Load settings
         self.settings = self.load_settings()
         self.setup_ui()
         self.showFullScreen()
 
+        log_file = "ProgramData/staff_clock_system.log"
+        logging.info(f"Settings loaded: {self.settings}")
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
+        logging.info("Initializing TimesheetCheckerThread...")
+        self.timesheet_checker = TimesheetCheckerThread(
+            self.settings["start_day"], self.settings["end_day"]
+        )
+        self.timesheet_checker.timesheet_generated.connect(self.handle_timesheet_generated)
+        self.timesheet_checker.start()
+
 
         logging.basicConfig(
             filename=log_file,
@@ -113,9 +127,22 @@ class StaffClockInOutSystem(QMainWindow):
             format="%(asctime)s - %(levelname)s - %(message)s",
         )
         logging.info("Application started.")
+        logging.info(f"Log file configured at: {log_file}")
 
         # Check for timesheet generation
+        logging.info("Performing initial timesheet generation check...")
         self.check_timesheet_generation()
+
+    def handle_timesheet_generated(self, message):
+        logging.info(message)
+        self.generate_all_timesheets(self.settings["end_day"])
+        QMessageBox.information(self, "Timesheet Generated", message)
+
+    def closeEvent(self, event):
+        # Ensure the thread stops when the app closes
+        self.timesheet_checker.stop()
+        self.timesheet_checker.wait()
+        super().closeEvent(event)
 
     def update_time(self):
         """Update the clock label with the current time."""
@@ -320,6 +347,7 @@ class StaffClockInOutSystem(QMainWindow):
             self.admin_button.click()
         elif staff_code == '654321':  # Exit code
             self.greeting_label.setText("Exit Mode Activated")
+            self.closeEvent()
             self.exit_button.show()
             self.exit_button.click()
         elif staff_code == '111111':
@@ -428,10 +456,10 @@ class StaffClockInOutSystem(QMainWindow):
         logging.info("Opening admin tab")
         admin_tab = QDialog(self)
         admin_tab.setWindowTitle('Admin Page')
-        admin_tab.setFixedSize(500, 500)
+        admin_tab.setFixedSize(500, 700)
         layout = QVBoxLayout(admin_tab)
         layout.setSpacing(20)
-        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setContentsMargins(40, 40, 40, 40)
 
         name_label = QLabel("Enter Name:")
         name_label.setFont(QFont("Arial", 16))
@@ -443,59 +471,115 @@ class StaffClockInOutSystem(QMainWindow):
         add_staff_button = QPushButton("Add Staff")
         add_staff_button.setFont(QFont("Arial", 16))
         add_staff_button.setMinimumSize(150, 50)
-        add_staff_button.setStyleSheet("background-color: #4CAF50; color: white;")
+        add_staff_button.setStyleSheet("background-color: #28a745; color: white;")  # Green shade
         add_staff_button.clicked.connect(self.add_staff)
         layout.addWidget(add_staff_button)
 
         delete_staff_button = QPushButton("Delete Staff")
         delete_staff_button.setFont(QFont("Arial", 16))
         delete_staff_button.setMinimumSize(150, 50)
-        delete_staff_button.setStyleSheet("background-color: #F44336; color: white;")
+        delete_staff_button.setStyleSheet("background-color: #dc3545; color: white;")  # Red shade
         delete_staff_button.clicked.connect(self.remove_staff)
         layout.addWidget(delete_staff_button)
 
         view_records_button = QPushButton("View Records")
         view_records_button.setFont(QFont("Arial", 16))
         view_records_button.setMinimumSize(150, 50)
-        view_records_button.setStyleSheet("background-color: #2196F3; color: white;")
+        view_records_button.setStyleSheet("background-color: #007bff; color: white;")  # Blue shade
         view_records_button.clicked.connect(self.open_records_tab)
         layout.addWidget(view_records_button)
 
         print_records_button = QPushButton("Print Records")
         print_records_button.setFont(QFont("Arial", 16))
         print_records_button.setMinimumSize(150, 50)
-        print_records_button.setStyleSheet("background-color: #967bb6; color: white;")
+        print_records_button.setStyleSheet("background-color: #6f42c1; color: white;")  # Purple shade
         print_records_button.clicked.connect(self.preparePrint)
         layout.addWidget(print_records_button)
 
         generate_timesheet_button = QPushButton("Generate Timesheet")
         generate_timesheet_button.setFont(QFont("Arial", 16))
         generate_timesheet_button.setMinimumSize(150, 50)
-        generate_timesheet_button.setStyleSheet("background-color: #2196F3; color: white;")
+        generate_timesheet_button.setStyleSheet("background-color: #17a2b8; color: white;")  # Teal shade
         generate_timesheet_button.clicked.connect(lambda: self.generate_all_timesheets(20))
         layout.addWidget(generate_timesheet_button)
 
         settings_button = QPushButton("Settings")
         settings_button.setFont(QFont("Arial", 16))
         settings_button.setMinimumSize(150, 50)
-        settings_button.setStyleSheet("background-color: #2196F3; color: white;")
+        settings_button.setStyleSheet("background-color: #ffc107; color: black;")  # Yellow shade with black text
         settings_button.clicked.connect(self.open_settings_menu)
         layout.addWidget(settings_button)
 
-        windowed_button = QPushButton("Enter Windowed Mode")
-        windowed_button.setFont(QFont("Arial", 16))
-        windowed_button.setMinimumSize(150, 50)
-        windowed_button.setStyleSheet("background-color: #2196F3; color: white;")
-        windowed_button.clicked.connect(self.windowed)
-        layout.addWidget(windowed_button)
+        # Add this in setup_ui where you define the windowed_button
+        self.windowed_button = QPushButton("Enter Windowed Mode")
+        self.windowed_button.setFont(QFont("Arial", 16))
+        self.windowed_button.setMinimumSize(150, 50)
+        self.windowed_button.setStyleSheet("background-color: #20c997; color: white;")  # Cyan shade
+        self.windowed_button.clicked.connect(self.toggle_window_mode)
+        layout.addWidget(self.windowed_button)
 
+        self.add_comment_button = QPushButton("Add Comment")
+        self.add_comment_button.setFont(QFont("Arial", 16))
+        self.add_comment_button.setMinimumSize(150, 50)
+        self.add_comment_button.setStyleSheet("background-color: #e83e8c; color: white;")  # Pink shade
+        self.add_comment_button.clicked.connect(self.add_comment)
+        layout.addWidget(self.add_comment_button)
         admin_tab.exec()
 
-    def windowed(self):
-        self.showNormal()
-        self.setFixedSize(QSize(600,600))
-        self.setWindowFlags(Qt.WindowType.Window)
-        self.show()
+    def add_comment(self):
+        logging.info("Adding Comment initiated")
+        staff_name = self.name_entry.text()
+        if not staff_name:
+            QMessageBox.warning(self, "Warning", "Please enter a Name")
+            logging.error(self, "Warning","No staff name entered")
+            return
+
+        conn = sqlite3.connect(databasePath)
+        c = conn.cursor()
+        c.execute("SELECT 1 FROM staff WHERE name = ?", (staff_name,))
+        result = c.fetchone()
+        if not result:
+            QMessageBox.warning(self, "Warning", "No staff found")
+            logging.error("No staff found")
+            return
+
+        comment_menu = QDialog(self)
+        comment_menu.setWindowTitle('Add Comment')
+        comment_menu.setFixedSize(400, 200)
+        layout = QVBoxLayout(comment_menu)
+        layout.setSpacing(20)
+        layout.setContentsMargins(40, 40, 40, 40)
+
+        comment_label = QLabel("Enter Comment:")
+        comment_label.setFont(QFont("Arial", 16))
+        self.comment_entry = QLineEdit()
+        self.comment_entry.setFont(QFont("Arial", 16))
+        layout.addWidget(comment_label)
+        layout.addWidget(self.comment_entry)
+
+        comment_menu.exec()
+
+
+    def toggle_window_mode(self):
+        if not self.isWindowed:
+            # Switch to windowed mode
+            self.showNormal()
+            self.setFixedSize(800, 600)
+            self.setWindowFlags(Qt.WindowType.Window)
+            self.show()
+            self.windowed_button.setText("Enter Fullscreen Mode")
+            logging.info("Switched to windowed mode.")
+        else:
+            # Switch to fullscreen mode
+            self.showMaximized()
+            self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
+            self.windowed_button.setText("Enter Windowed Mode")
+            logging.info("Switched to fullscreen mode.")
+
+        # Toggle the state
+        self.isWindowed = not self.isWindowed
+
 
     def add_staff(self):
         staff_name = self.name_entry.text().strip()
@@ -518,14 +602,50 @@ class StaffClockInOutSystem(QMainWindow):
 
     def remove_staff(self):
         staff_name = self.name_entry.text().strip()
-        if staff_name:
+        if not staff_name:
+            QMessageBox.critical(self, "Error", "Please enter a valid staff name.")
+            logging.error("Staff name is empty.")
+            return
+
+        try:
             conn = sqlite3.connect(databasePath)
             c = conn.cursor()
-            if c.execute('SELECT * FROM staff WHERE name = ?', (staff_name,)).fetchone():
-                c.execute('DELETE FROM staff WHERE name = ?', (staff_name,))
-                conn.commit()
-                QMessageBox.information(self, 'Success', f'Staff member {staff_name} deleted')
-                logging.info(f'Staff member {staff_name} deleted')
+
+            # Check if the staff member exists
+            c.execute('SELECT code FROM staff WHERE name = ?', (staff_name,))
+            staff = c.fetchone()
+            if not staff:
+                QMessageBox.critical(self, "Error", "Staff member not found.")
+                logging.error(f"Staff member '{staff_name}' not found.")
+                return
+            staff_code = staff[0]
+
+            # Fetch all clock records for the staff member
+            c.execute('SELECT clock_in_time, clock_out_time, "" AS notes FROM clock_records WHERE staff_code = ?',
+                      (staff_code,))
+            clock_records = c.fetchall()
+
+            # Insert staff details into archive_records
+            for record in clock_records:
+                c.execute(
+                    'INSERT INTO archive_records (staff_name, staff_code, clock_in, clock_out, notes) VALUES (?, ?, ?, ?, ?)',
+                    (staff_name, staff_code, *record))
+
+            # Commit archive records
+            conn.commit()
+
+            # Delete clock records and staff record from main tables
+            c.execute('DELETE FROM clock_records WHERE staff_code = ?', (staff_code,))
+            c.execute('DELETE FROM staff WHERE code = ?', (staff_code,))
+            conn.commit()
+
+            QMessageBox.information(self, "Success", f"Staff member {staff_name} archived and deleted successfully.")
+            logging.info(f"Archived and removed staff member: {staff_name}")
+
+        except sqlite3.Error as e:
+            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            logging.error(f"Database error occurred: {e}")
+        finally:
             conn.close()
 
     def generate_pdf(self, file_path, staff_name, records):
@@ -634,12 +754,12 @@ class StaffClockInOutSystem(QMainWindow):
     def preparePrint(self):
         staff_name = self.name_entry.text().strip()
         if staff_name:
-            file_path = f"Timesheets/{staff_name}_records.pdf"
+            file_path = f"Timesheets/{staff_name}_timesheet.pdf"
             self.print_via_jetdirect(file_path)
             logging.info(f'Prepared to print {staff_name}')
 
     def print_via_jetdirect(self, file_path):
-        printer_ip = "192.168.1.250"
+        printer_ip = "10.60.1.146"
         printer_port = 9100
         try:
             with open(file_path, "rb") as pdf_file:
@@ -706,7 +826,7 @@ class StaffClockInOutSystem(QMainWindow):
     def generate_timesheet(self, employee_name, role, start_date, end_date, records):
         # Create the PDF file path
         os.makedirs("Timesheets", exist_ok=True)
-        output_file = f"{permanentPath}{employee_name.replace(' ', '_')}_timesheet.pdf"
+        output_file = f"{permanentPath}/{employee_name}_timesheet.pdf"
 
         # Create the PDF document
         doc = SimpleDocTemplate(output_file, pagesize=A4)
