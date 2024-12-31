@@ -15,9 +15,10 @@ from datetime import datetime, timedelta
 from os import mkdir, write
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
-    QVBoxLayout, QHBoxLayout, QDialog, QMessageBox, QDialogButtonBox
+    QVBoxLayout, QHBoxLayout, QDialog, QMessageBox, QDialogButtonBox, QTableWidget, QHeaderView, QAbstractItemView,
+    QTableWidgetItem
 )
-from PyQt6.QtCore import Qt, QTimer, QTime
+from PyQt6.QtCore import Qt, QTimer, QTime, QEvent
 from PyQt6.QtGui import QFont, QPixmap
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
@@ -26,7 +27,9 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
-from Background_tasks import TimesheetCheckerThread
+from timesheetDailyCheck import TimesheetCheckerThread
+from dailyBackUp import DailyBackUp
+
 
 tempPath = ""
 permanentPath = ""
@@ -39,46 +42,38 @@ logoPath = ""
 def get_os_specific_path():
     global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logoPath
 
-    def find_file(file_name, start_path="."):
-        for root, dirs, files in os.walk(start_path):
-            if file_name in files:
-                return os.path.join(root, file_name)
-        return None
+    # Get the base directory where main.py resides
+    base_path = os.path.dirname(os.path.abspath(__file__))
 
-    def find_directory(dir_name, start_path="."):
-        for root, dirs, files in os.walk(start_path):
-            if dir_name in dirs:
-                return os.path.join(root, dir_name)
-        return None
+    if not os.path.exists(base_path):
+        raise FileNotFoundError("Base directory does not exist.")
 
-    # Identify base directory based on OS
-    base_path = os.getcwd()  # Get current working directory
+    # OS-dependent paths
     if platform.system() == "Darwin":
         # macOS paths
-        tempPath = find_directory("TempData", base_path) or os.path.join(base_path, "TempData")
-        permanentPath = find_directory("Timesheets", base_path) or os.path.join(base_path, "Timesheets")
+        program_data_path = os.path.join(base_path, "ProgramData")
+        tempPath = os.path.join(base_path, "TempData")
+        permanentPath = os.path.join(base_path, "Timesheets")
     elif platform.system() == "Windows":
         # Windows paths
-        tempPath = find_directory("TempData", base_path) or os.path.join(base_path, "TempData")
-        permanentPath = find_directory("Timesheets", base_path) or os.path.join(base_path, "Timesheets")
+        program_data_path = os.path.join(base_path, "ProgramData")
+        tempPath = os.path.join(base_path, "TempData")
+        permanentPath = os.path.join(base_path, "Timesheets")
     else:
         raise OSError("Unsupported Operating System")
 
     # Ensure directories exist
+    os.makedirs(program_data_path, exist_ok=True)
     os.makedirs(tempPath, exist_ok=True)
     os.makedirs(permanentPath, exist_ok=True)
 
-    # Find files in the directory tree
-    program_data_path = find_directory("ProgramData", base_path)
-    if not program_data_path:
-        raise FileNotFoundError("ProgramData folder not found in the project structure.")
+    # Paths for specific files
+    settingsFilePath = os.path.join(program_data_path, "settings.json")
+    log_file = os.path.join(program_data_path, "staff_clock_system.log")
+    logoPath = os.path.join(program_data_path, "Logo.png")
+    databasePath = os.path.join(program_data_path, "staff_hours.db")
 
-    settingsFilePath = find_file("settings.json", program_data_path) or os.path.join(program_data_path, "settings.json")
-    log_file = find_file("staff_clock_system.log", program_data_path) or os.path.join(program_data_path, "staff_clock_system.log")
-    logoPath = find_file("Logo.png", program_data_path) or os.path.join(program_data_path, "Logo.png")
-    databasePath = find_file("staff_hours.db", program_data_path) or os.path.join(program_data_path, "staff_hours.db")
-
-    # Create missing files with defaults
+    # Ensure files exist or create defaults
     if not os.path.exists(settingsFilePath):
         default_settings = {"start_day": 21, "end_day": 20}
         with open(settingsFilePath, "w") as file:
@@ -92,6 +87,15 @@ def get_os_specific_path():
     if not os.path.exists(databasePath):
         raise FileNotFoundError(f"Database file not found at {databasePath}.")
 
+    configure_logging()
+
+def configure_logging():
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.DEBUG,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+    logging.info("Logging initialized.")
 
 class StaffClockInOutSystem(QMainWindow):
     def __init__(self):
@@ -102,47 +106,71 @@ class StaffClockInOutSystem(QMainWindow):
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
         logging.info("UI setup complete.")
 
+        # Install event filter globally on the application
+        QApplication.instance().installEventFilter(self)
+        #self.standby_stage = 0  # 0: Not in standby, 1: Dimmed, 2: Fully Dimmed
         self.isWindowed = False
+        # Paths
+        self.backup_folder = os.path.join(os.path.dirname(__file__), "Backups")
+        self.database_path = databasePath
+        self.log_file_path = log_file
+        self.settings_path = settingsFilePath
+
+        self.daily_backup_thread = DailyBackUp(
+            backup_folder=os.path.join(os.path.dirname(__file__), "Backups"),
+            database_path=databasePath,
+            log_file_path=log_file,
+            settings_path=settingsFilePath,
+            logo_path=logoPath,
+        )
+        self.daily_backup_thread.daily_back_up.connect(self.handle_backup_complete)
+        self.daily_backup_thread.start()
+
+        # Initialize Inactivity Timer
+        #self.inactivity_timer = QTimer(self)
+        #self.inactivity_timer.setInterval(5000)  # 5 minutes
+        #self.inactivity_timer.timeout.connect(self.enter_standby_mode)
+        #self.inactivity_timer.start()
+
+        # Monitor user interactions
+        #self.installEventFilter(self)
+
+        # UI Components
+        self.clock_timer = QTimer(self)
+        self.clock_timer.timeout.connect(self.update_time)
+        self.clock_timer.start(1000)
 
         # Load settings
         self.settings = self.load_settings()
         self.setup_ui()
         self.showFullScreen()
 
-        log_file = "ProgramData/staff_clock_system.log"
         logging.info(f"Settings loaded: {self.settings}")
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
         logging.info("Initializing TimesheetCheckerThread...")
-        self.timesheet_checker = TimesheetCheckerThread(
-            self.settings["start_day"], self.settings["end_day"]
-        )
+        self.timesheet_checker = TimesheetCheckerThread(settingsFilePath)
         self.timesheet_checker.timesheet_generated.connect(self.handle_timesheet_generated)
         self.timesheet_checker.start()
 
-
-        logging.basicConfig(
-            filename=log_file,
-            level=logging.DEBUG,
-            format="%(asctime)s - %(levelname)s - %(message)s",
-        )
-        logging.info("Application started.")
-        logging.info(f"Log file configured at: {log_file}")
-
         # Check for timesheet generation
-        logging.info("Performing initial timesheet generation check...")
-        self.check_timesheet_generation()
+        #logging.info("Performing initial timesheet generation check...")
+        #self.check_timesheet_generation()
 
     def handle_timesheet_generated(self, message):
         logging.info(message)
         self.generate_all_timesheets(self.settings["end_day"])
-        QMessageBox.information(self, "Timesheet Generated", message)
+        #QMessageBox.information(self, "Timesheet Generated", message)
 
     def closeEvent(self, event):
         # Ensure the thread stops when the app closes
-        self.timesheet_checker.stop()
-        self.timesheet_checker.wait()
+        self.daily_backup_thread.stop()
+        self.daily_backup_thread.wait()
         super().closeEvent(event)
+
+    def handle_backup_complete(self, message):
+        logging.info(message)
+        QMessageBox.information(self, "Backup", message)
 
     def update_time(self):
         """Update the clock label with the current time."""
@@ -175,9 +203,10 @@ class StaffClockInOutSystem(QMainWindow):
             self.generate_all_timesheets(end_day)
 
     def setup_ui(self):
-        # Setting up the central widget
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
+        # Ensure central widget is persistently defined
+        if not hasattr(self, "central_widget") or self.central_widget is None:
+            self.central_widget = QWidget()
+            self.setCentralWidget(self.central_widget)
 
         # Main layout
         main_layout = QVBoxLayout()
@@ -189,15 +218,10 @@ class StaffClockInOutSystem(QMainWindow):
 
         # Clock Label
         self.clock_label = QLabel()
-        self.clock_label.setFont(QFont("Arial", 64 , QFont.Weight.Bold))
+        self.clock_label.setFont(QFont("Arial", 64, QFont.Weight.Bold))
         self.clock_label.setStyleSheet("color: white;")
         self.clock_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.update_time()  # Initialize the clock with the current time
-
-        # Timer to update the clock every second
-        self.clock_timer = QTimer(self)
-        self.clock_timer.timeout.connect(self.update_time)
-        self.clock_timer.start(1000)  # Update every 1000 milliseconds (1 second)
 
         # Add the clock widget to the top-left
         top_layout.addWidget(self.clock_label, alignment=Qt.AlignmentFlag.AlignLeft)
@@ -284,6 +308,8 @@ class StaffClockInOutSystem(QMainWindow):
 
         main_layout.addLayout(button_layout)
         button_layout.addLayout(clock_buttons_layout)
+
+        self.central_widget.installEventFilter(self)
 
         # Set Background Style
         self.setStyleSheet(
@@ -527,37 +553,352 @@ class StaffClockInOutSystem(QMainWindow):
         admin_tab.exec()
 
     def add_comment(self):
-        logging.info("Adding Comment initiated")
-        staff_name = self.name_entry.text()
+        staff_name = self.name_entry.text().strip()
         if not staff_name:
             QMessageBox.warning(self, "Warning", "Please enter a Name")
-            logging.error(self, "Warning","No staff name entered")
+            logging.error("No staff name entered.")
             return
 
+        # Check if staff exists
         conn = sqlite3.connect(databasePath)
         c = conn.cursor()
-        c.execute("SELECT 1 FROM staff WHERE name = ?", (staff_name,))
-        result = c.fetchone()
-        if not result:
+        c.execute("SELECT code FROM staff WHERE name = ?", (staff_name,))
+        staff = c.fetchone()
+        if not staff:
+            conn.close()
             QMessageBox.warning(self, "Warning", "No staff found")
-            logging.error("No staff found")
+            logging.error(f"No staff found for name: {staff_name}")
             return
+        staff_code = staff[0]
+        conn.close()
 
+        # Open the menu to choose where to add the comment
         comment_menu = QDialog(self)
         comment_menu.setWindowTitle('Add Comment')
-        comment_menu.setFixedSize(400, 200)
+        comment_menu.setFixedSize(400, 300)
         layout = QVBoxLayout(comment_menu)
+        layout.setSpacing(20)
+        layout.setContentsMargins(40, 40, 40, 40)
+
+        # Add the options
+        staff_button = QPushButton("Add Comment to Staff")
+        staff_button.setFont(QFont("Arial", 16))
+        staff_button.clicked.connect(lambda: self.add_staff_comment(staff_name, comment_menu))
+        layout.addWidget(staff_button)
+
+        clock_record_button = QPushButton("Add Comment to Clock Record")
+        clock_record_button.setFont(QFont("Arial", 16))
+        clock_record_button.clicked.connect(lambda: self.add_clock_record_comment(staff_code, comment_menu))
+        layout.addWidget(clock_record_button)
+
+        comment_menu.exec()
+
+    def enter_standby_mode(self):
+        """Enter standby mode in two stages."""
+        if self.standby_stage == 0:
+            logging.info("Entering first stage of standby mode...")
+            self.standby_stage = 1
+
+            # Dim screen slightly and add standby text
+            self.standby_label = QLabel("Standby Mode\nMove your mouse or press a key to wake.", self.central_widget)
+            self.standby_label.setFont(QFont("Arial", 24, QFont.Weight.Bold))
+            self.standby_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.standby_label.setStyleSheet("background-color: rgba(0, 0, 0, 0.5); color: white;")
+            self.standby_label.setGeometry(self.central_widget.rect())
+            self.standby_label.show()
+            return
+
+        if self.standby_stage == 1:
+            logging.info("Entering second stage of standby mode...")
+            self.standby_stage = 2
+
+            # Fully dim the screen
+            self.standby_label.setStyleSheet("background-color: rgba(0, 0, 0, 0.8); color: white;")
+
+    def exit_standby_mode(self):
+        """Exit standby mode and restore normal operations."""
+        if self.standby_stage == 0:
+            logging.info("Not in standby mode. No action needed.")
+            return
+
+        logging.info("Exiting standby mode...")
+        self.standby_stage = 0  # Reset standby stage
+
+        # Remove standby overlay
+        if hasattr(self, 'standby_label'):
+            self.standby_label.deleteLater()
+            del self.standby_label
+
+        # Restart UI updates
+        self.clock_timer.start()
+
+        # Restore central widget visibility
+        if hasattr(self, 'central_widget') and self.central_widget.isVisible():
+            self.central_widget.show()
+
+    def eventFilter(self, source, event):
+        """Monitor interactions to exit standby mode."""
+        if event.type() in {QEvent.Type.MouseMove, QEvent.Type.KeyPress}:
+            logging.info(f"User interaction detected. Standby stage: {self.standby_stage}")
+
+            # Exit standby mode directly
+            if self.standby_stage > 0:
+                self.exit_standby_mode()
+                self.inactivity_timer.start()  # Reset inactivity timer
+            return True  # Event handled
+
+        return super().eventFilter(source, event)
+
+    def delete_central_widget(self):
+        logging.debug("Deleting central widget.")
+        self.central_widget.deleteLater()
+        self.central_widget = None
+
+    def add_staff_comment(self, staff_name, parent_menu):
+        parent_menu.close()  # Close the parent menu
+
+        # Open a dialog to add a comment
+        comment_dialog = QDialog(self)
+        comment_dialog.setWindowTitle("Add Comment to Staff")
+        comment_dialog.setFixedSize(400, 200)
+        layout = QVBoxLayout(comment_dialog)
         layout.setSpacing(20)
         layout.setContentsMargins(40, 40, 40, 40)
 
         comment_label = QLabel("Enter Comment:")
         comment_label.setFont(QFont("Arial", 16))
-        self.comment_entry = QLineEdit()
-        self.comment_entry.setFont(QFont("Arial", 16))
         layout.addWidget(comment_label)
-        layout.addWidget(self.comment_entry)
 
-        comment_menu.exec()
+        comment_entry = QLineEdit()
+        comment_entry.setFont(QFont("Arial", 16))
+        layout.addWidget(comment_entry)
+
+        save_button = QPushButton("Save Comment")
+        save_button.setFont(QFont("Arial", 16))
+        save_button.clicked.connect(lambda: self.save_staff_comment(staff_name, comment_entry.text(), comment_dialog))
+        layout.addWidget(save_button)
+
+        comment_dialog.exec()
+
+    def save_staff_comment(self, staff_name, comment, dialog):
+        if not comment.strip():
+            QMessageBox.warning(self, "Warning", "Comment cannot be empty.")
+            return
+
+        try:
+            conn = sqlite3.connect(databasePath)
+            c = conn.cursor()
+            c.execute("UPDATE staff SET notes = ? WHERE name = ?", (comment, staff_name))
+            conn.commit()
+            conn.close()
+            QMessageBox.information(self, "Success", "Comment added to staff record.")
+            logging.info(f"Added comment to staff {staff_name}: {comment}")
+            dialog.close()
+        except sqlite3.Error as e:
+            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            logging.error(f"Database error: {e}")
+
+    def add_clock_record_comment(self, staff_code, parent_menu):
+        parent_menu.close()  # Close the parent menu
+
+        # Fetch clock records for the staff
+        conn = sqlite3.connect(databasePath)
+        c = conn.cursor()
+        c.execute("SELECT id, clock_in_time, clock_out_time FROM clock_records WHERE staff_code = ?", (staff_code,))
+        records = c.fetchall()
+        conn.close()
+
+        if not records:
+            QMessageBox.information(self, "Info", "No clock records found for this staff member.")
+            return
+
+        # Open a dialog to list clock records and add a comment
+        record_dialog = QDialog(self)
+        record_dialog.setWindowTitle("Add Comment to Clock Record")
+        record_dialog.setFixedSize(500, 400)
+        layout = QVBoxLayout(record_dialog)
+        layout.setSpacing(20)
+        layout.setContentsMargins(40, 40, 40, 40)
+
+        record_label = QLabel("Select a Clock Record:")
+        record_label.setFont(QFont("Arial", 16))
+        layout.addWidget(record_label)
+
+        # Create buttons for each record
+        for record in records:
+            record_id, clock_in, clock_out = record
+            button_text = f"Clock In: {clock_in}, Clock Out: {clock_out or 'N/A'}"
+            record_button = QPushButton(button_text)
+            record_button.setFont(QFont("Arial", 12))
+            record_button.clicked.connect(lambda _, rid=record_id: self.open_records_tab)
+            layout.addWidget(record_button)
+
+        record_dialog.exec()
+
+    def open_records_tab(self):
+        """Opens a dynamic tab to view clock records for a selected staff."""
+        logging.debug("Starting open_records_tab function")
+        staff_name = self.name_entry.text().strip()
+        if not staff_name:
+            QMessageBox.critical(self, "Error", "Please enter a valid staff name.")
+            logging.error(f"Error: Invalid staff name '{staff_name}'")
+            return
+
+        try:
+            conn = sqlite3.connect(databasePath)
+            cursor = conn.cursor()
+            cursor.execute('SELECT code FROM staff WHERE name = ?', (staff_name,))
+            staff = cursor.fetchone()
+
+            if not staff:
+                QMessageBox.critical(self, "Error", "Staff member not found.")
+                logging.error(f"Staff member '{staff_name}' not found.")
+                return
+
+            staff_code = staff[0]
+            cursor.execute('SELECT id, clock_in_time, clock_out_time, notes FROM clock_records WHERE staff_code = ?',
+                           (staff_code,))
+            records = cursor.fetchall()
+            conn.close()
+
+            if not records:
+                QMessageBox.information(self, "Info", "No records found for this staff member.")
+                logging.warning(f"No records found for staff '{staff_name}'.")
+                return
+
+        except sqlite3.Error as e:
+            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            logging.error(f"Database error occurred: {e}")
+            return
+
+        # Create a dialog for displaying records
+        records_dialog = QDialog(self)
+        records_dialog.setWindowTitle(f"Clock Records for {staff_name}")
+        records_dialog.setMinimumWidth(600)
+
+        layout = QVBoxLayout(records_dialog)
+        layout.setSpacing(20)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Add a QTableWidget for displaying records
+        table = QTableWidget(len(records), 4)
+        table.setHorizontalHeaderLabels(["Clock In", "Clock Out", "Notes", "Edit"])
+        table.horizontalHeader().setStretchLastSection(True)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # Make non-editable by default
+
+        # Populate the table with records
+        for row, record in enumerate(records):
+            clock_in_item = QTableWidgetItem(record[1] if record[1] else "N/A")
+            clock_out_item = QTableWidgetItem(record[2] if record[2] else "N/A")
+            notes_item = QTableWidgetItem(record[3] if record[3] else "N/A")
+
+            table.setItem(row, 0, clock_in_item)
+            table.setItem(row, 1, clock_out_item)
+            table.setItem(row, 2, notes_item)
+
+            # Add an "Edit" button to each row
+            edit_button = QPushButton("Edit")
+            edit_button.clicked.connect(lambda _, rid=record[0]: self.edit_clock_record(rid))
+            table.setCellWidget(row, 3, edit_button)
+
+        layout.addWidget(table)
+
+        # Adjust dialog height dynamically
+        rows_height = table.verticalHeader().length()
+        records_dialog.setFixedHeight(200 + rows_height)
+
+        close_button = QPushButton("Close")
+        close_button.clicked.connect(records_dialog.close)
+        layout.addWidget(close_button)
+
+        records_dialog.exec()
+
+    def edit_clock_record(self, record_id):
+        """Opens a dialog to edit a specific clock record."""
+        logging.info(f"Editing clock record ID: {record_id}")
+
+        # Fetch the record details
+        conn = sqlite3.connect(databasePath)
+        cursor = conn.cursor()
+        cursor.execute("SELECT clock_in_time, clock_out_time, notes FROM clock_records WHERE id = ?", (record_id,))
+        record = cursor.fetchone()
+        conn.close()
+
+        if not record:
+            QMessageBox.warning(self, "Warning", "Record not found.")
+            return
+
+        # Open a dialog to edit the record
+        edit_dialog = QDialog(self)
+        edit_dialog.setWindowTitle("Edit Clock Record")
+        edit_dialog.setFixedSize(400, 300)
+
+        layout = QVBoxLayout(edit_dialog)
+        layout.setSpacing(20)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        clock_in_label = QLabel("Clock In:")
+        clock_in_entry = QLineEdit(record[0] if record[0] else "")
+        layout.addWidget(clock_in_label)
+        layout.addWidget(clock_in_entry)
+
+        clock_out_label = QLabel("Clock Out:")
+        clock_out_entry = QLineEdit(record[1] if record[1] else "")
+        layout.addWidget(clock_out_label)
+        layout.addWidget(clock_out_entry)
+
+        notes_label = QLabel("Notes:")
+        notes_entry = QLineEdit(record[2] if record[2] else "")
+        layout.addWidget(notes_label)
+        layout.addWidget(notes_entry)
+
+        save_button = QPushButton("Save")
+        save_button.clicked.connect(lambda: self.save_clock_record(record_id, clock_in_entry.text(),
+                                                                   clock_out_entry.text(), notes_entry.text(),
+                                                                   edit_dialog))
+        layout.addWidget(save_button)
+
+        edit_dialog.exec()
+
+    def save_clock_record(self, record_id, clock_in, clock_out, notes, dialog):
+        """Saves the edited clock record."""
+        try:
+            conn = sqlite3.connect(databasePath)
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE clock_records
+                SET clock_in_time = ?, clock_out_time = ?, notes = ?
+                WHERE id = ?
+            """, (clock_in, clock_out, notes, record_id))
+            conn.commit()
+            conn.close()
+
+            QMessageBox.information(self, "Success", "Record updated successfully.")
+            logging.info(
+                f"Updated clock record ID {record_id}: Clock In: {clock_in}, Clock Out: {clock_out}, Notes: {notes}")
+            dialog.close()
+        except sqlite3.Error as e:
+            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            logging.error(f"Database error occurred: {e}")
+
+    def save_clock_record_comment(self, record_id, comment, dialog):
+        if not comment.strip():
+            QMessageBox.warning(self, "Warning", "Comment cannot be empty.")
+            return
+
+        try:
+            conn = sqlite3.connect(databasePath)
+            c = conn.cursor()
+            c.execute("UPDATE clock_records SET notes = ? WHERE id = ?", (comment, record_id))
+            conn.commit()
+            conn.close()
+            QMessageBox.information(self, "Success", "Comment added to clock record.")
+            logging.info(f"Added comment to clock record {record_id}: {comment}")
+            dialog.close()
+        except sqlite3.Error as e:
+            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            logging.error(f"Database error: {e}")
 
 
     def toggle_window_mode(self):
@@ -583,22 +924,30 @@ class StaffClockInOutSystem(QMainWindow):
 
     def add_staff(self):
         staff_name = self.name_entry.text().strip()
-        if staff_name:
-            staff_code = random.randint(1000, 9999)
-            conn = sqlite3.connect(databasePath)
-            c = conn.cursor()
-            while c.execute('SELECT * FROM staff WHERE code = ?', (staff_code,)).fetchone():
+        max_retries = 1000
+        retries = 0
+        while retries < max_retries:
+            if staff_name:
                 staff_code = random.randint(1000, 9999)
-            try:
-                c.execute('INSERT INTO staff (name, code) VALUES (?, ?)', (staff_name, staff_code))
-                conn.commit()
-                QMessageBox.information(self, 'Success', f'Staff member {staff_name} added with code {staff_code}')
-                logging.info(f'Staff member {staff_name} added with code {staff_code}')
-            except sqlite3.Error as e:
-                QMessageBox.critical(self, 'Database Error', f'An error occurred: {e}')
-                logging.error(f'Database error occurred: {e}')
-            finally:
-                conn.close()
+                conn = sqlite3.connect(databasePath)
+                c = conn.cursor()
+                while c.execute('SELECT * FROM staff WHERE code = ?', (staff_code,)).fetchone():
+                    staff_code = random.randint(1000, 9999)
+                try:
+                    c.execute('INSERT INTO staff (name, code) VALUES (?, ?)', (staff_name, staff_code))
+                    conn.commit()
+                    QMessageBox.information(self, 'Success', f'Staff member {staff_name} added with code {staff_code}')
+                    logging.info(f'Staff member {staff_name} added with code {staff_code}')
+                    break
+                except sqlite3.Error as e:
+                    QMessageBox.critical(self, 'Database Error', f'An error occurred: {e}')
+                    logging.error(f'Database error occurred: {e}')
+                finally:
+                    conn.close()
+        else:
+            QMessageBox.warning(self, "Warning", "Could not add staff.")
+            logging.info(f"Could not add staff.{staff_name}")
+
 
     def remove_staff(self):
         staff_name = self.name_entry.text().strip()
