@@ -1,10 +1,12 @@
 import os
 import platform
+import shutil
 import sqlite3
 import datetime
 import random
 import socket
 import keyboard
+import calendar
 import pyglet
 from functools import partial
 import logging
@@ -12,6 +14,7 @@ from threading import Thread
 import json
 import subprocess
 import platform
+import zipfile
 import time
 import sys
 from datetime import datetime, timedelta
@@ -19,7 +22,7 @@ from os import mkdir, write
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QDialog, QMessageBox, QDialogButtonBox, QTableWidget, QHeaderView, QAbstractItemView,
-    QTableWidgetItem
+    QTableWidgetItem, QCompleter
 )
 from PyQt6.QtCore import Qt, QTimer, QTime, QEvent
 from PyQt6.QtGui import QFont, QPixmap
@@ -75,22 +78,76 @@ def get_os_specific_path():
     log_file = os.path.join(program_data_path, "staff_clock_system.log")
     logoPath = os.path.join(program_data_path, "Logo.png")
     databasePath = os.path.join(program_data_path, "staff_hours.db")
-
-    # Ensure files exist or create defaults
-    if not os.path.exists(settingsFilePath):
-        default_settings = {"start_day": 21, "end_day": 20, "printer_IP": "10.60.1.146"}
-        with open(settingsFilePath, "w") as file:
-            json.dump(default_settings, file)
-
-    if not os.path.exists(log_file):
-        open(log_file, "a").close()
-
-    if not os.path.exists(logoPath):
-        raise FileNotFoundError(f"Logo file not found at {logoPath}.")
-    if not os.path.exists(databasePath):
-        raise FileNotFoundError(f"Database file not found at {databasePath}.")
+    backup_folder = os.path.join(base_path, "Backups")
 
     configure_logging()
+
+    # Ensure files exist or create defaults
+    check_and_restore_file(databasePath, backup_folder, generate_default_database)
+    check_and_restore_file(settingsFilePath, backup_folder, generate_default_settings)
+
+def check_and_restore_file(primary_path, backup_folder, generate_default=None):
+    if os.path.exists(primary_path):
+        logging.info(f"File found: {primary_path}")
+        return
+
+    # Look for zipped backups
+    zip_files = [
+        os.path.join(backup_folder, f) for f in os.listdir(backup_folder) if f.endswith('.zip')
+    ]
+    zip_files.sort(key=os.path.getmtime, reverse=True)  # Sort backups by modification time (newest first)
+
+    for zip_file in zip_files:
+        try:
+            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                # Check if the file exists in the zip archive
+                if os.path.basename(primary_path) in zip_ref.namelist():
+                    zip_ref.extract(os.path.basename(primary_path), os.path.dirname(primary_path))
+                    logging.info(f"Restored {primary_path} from backup {zip_file}")
+                    return
+        except zipfile.BadZipFile:
+            logging.error(f"Corrupted zip file: {zip_file}")
+
+    # If no backup exists for files like the logo, raise an error
+    if primary_path == logoPath:
+        logging.error(f"Critical: Logo file not found in either {primary_path} or backups.")
+        raise FileNotFoundError(f"Logo file missing and no backups available in {backup_folder}.")
+
+    # For other files, generate default if a function is provided
+    if generate_default:
+        logging.warning(f"No backup found for {primary_path}. Generating default.")
+        generate_default(primary_path)
+
+def generate_default_database(path):
+    conn = sqlite3.connect(path)
+    c = conn.cursor()
+    # Example schema creation
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS staff (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            code INTEGER UNIQUE NOT NULL
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS clock_records (
+            id INTEGER PRIMARY KEY,
+            staff_code INTEGER NOT NULL,
+            clock_in_time TEXT,
+            clock_out_time TEXT,
+            break_time TEXT,
+            FOREIGN KEY(staff_code) REFERENCES staff(code)
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    logging.info(f"Default database created at {path}")
+
+def generate_default_settings(path):
+    default_settings = {"start_day": 21, "end_day": 20, "printer_IP": "10.60.1.146"}
+    with open(path, "w") as file:
+        json.dump(default_settings, file)
+    logging.info(f"Default settings file created at {path}")
 
 def configure_logging():
     logging.basicConfig(
@@ -126,14 +183,8 @@ class StaffClockInOutSystem(QMainWindow):
         self.daily_backup_thread.daily_back_up.connect(self.handle_backup_complete)
         self.daily_backup_thread.start()
 
-        # Initialize Inactivity Timer
-        #self.inactivity_timer = QTimer(self)
-        #self.inactivity_timer.setInterval(5000)  # 5 minutes
-        #self.inactivity_timer.timeout.connect(self.enter_standby_mode)
-        #self.inactivity_timer.start()
-
-        # Monitor user interactions
-        #self.installEventFilter(self)
+        self.break_start_time = None  # Tracks when the break started
+        self.on_break = False  # Tracks whether the staff is on break
 
         # UI Components
         self.clock_timer = QTimer(self)
@@ -153,14 +204,9 @@ class StaffClockInOutSystem(QMainWindow):
         self.timesheet_checker.timesheet_generated.connect(self.handle_timesheet_generated)
         self.timesheet_checker.start()
 
-        # Check for timesheet generation
-        #logging.info("Performing initial timesheet generation check...")
-        #self.check_timesheet_generation()
-
     def handle_timesheet_generated(self, message):
         logging.info(message)
         self.generate_all_timesheets(self.settings["end_day"])
-        #QMessageBox.information(self, "Timesheet Generated", message)
 
     def closeEvent(self, event):
         # Ensure the thread stops when the app closes
@@ -331,7 +377,7 @@ class StaffClockInOutSystem(QMainWindow):
         conn = sqlite3.connect(databasePath)
         c = conn.cursor()
 
-        # Check if the staff member exists
+        # Check if the staff exists
         c.execute('SELECT * FROM staff WHERE code = ?', (staff_code,))
         staff = c.fetchone()
         if not staff:
@@ -340,33 +386,64 @@ class StaffClockInOutSystem(QMainWindow):
             return
 
         if action == 'in':
-            clock_in_time = datetime.now().isoformat()
-            c.execute('INSERT INTO clock_records (staff_code, clock_in_time) VALUES (?, ?)', (staff_code, clock_in_time))
-            conn.commit()
-            conn.close()
-            time_in = datetime.fromisoformat(clock_in_time).strftime('%H:%M')
-            QMessageBox.information(self, 'Success', f'Clock-in recorded successfully at {time_in}')
-            logging.info(f"Clock-in successful for staff code {staff_code} at {time_in}")
-            self.staff_code_entry.clear()
-        elif action == 'out':
-            clock_out_time = datetime.now().isoformat()
-            c.execute('SELECT id FROM clock_records WHERE staff_code = ? AND clock_out_time IS NULL',
-                      (staff_code,))
+            # Check if already clocked in but not on break
+            c.execute('SELECT id FROM clock_records WHERE staff_code = ? AND clock_out_time IS NULL', (staff_code,))
             clock_record = c.fetchone()
-            if not clock_record:
-                conn.close()
-                QMessageBox.critical(self, 'Error', 'No clock-in record found')
-                return
-            c.execute('UPDATE clock_records SET clock_out_time = ? WHERE id = ?', (clock_out_time, clock_record[0]))
-            conn.commit()
-            conn.close()
-            time_out = datetime.fromisoformat(clock_out_time).strftime('%H:%M')
-            QMessageBox.information(self, 'Success', f'Clock-out recorded successfully at {time_out}')
-            logging.info(f"Clock-out successful for staff code {staff_code} at {time_out}")
+
+            if clock_record:
+                if not self.on_break:
+                    # Start Break
+                    self.break_start_time = datetime.now()
+                    self.on_break = True
+                    QMessageBox.information(self, 'Break Started', 'Your break has started.')
+                    logging.info(f"Break started for staff code {staff_code} at {self.break_start_time}")
+                else:
+                    QMessageBox.warning(self, 'Error', 'You are already on a break.')
+            else:
+                # Regular Clock-In
+                clock_in_time = datetime.now().isoformat()
+                c.execute('INSERT INTO clock_records (staff_code, clock_in_time) VALUES (?, ?)',
+                          (staff_code, clock_in_time))
+                conn.commit()
+                time_in = datetime.fromisoformat(clock_in_time).strftime('%H:%M')
+                QMessageBox.information(self, 'Success', f'Clock-in recorded successfully at {time_in}')
+                logging.info(f"Clock-in successful for staff code {staff_code} at {time_in}")
             self.staff_code_entry.clear()
+
+        elif action == 'out':
+            # Check if on break
+            if self.on_break:
+                # End Break
+                break_end_time = datetime.now()
+                break_duration = (break_end_time - self.break_start_time).total_seconds() / 60  # Duration in minutes
+                c.execute('UPDATE clock_records SET break_time = ? WHERE staff_code = ? AND clock_out_time IS NULL',
+                          (str(break_duration), staff_code))
+                conn.commit()
+                self.on_break = False
+                self.break_start_time = None
+                QMessageBox.information(self, 'Break Ended', f'Your break lasted {break_duration:.2f} minutes.')
+                logging.info(f"Break ended for staff code {staff_code}. Duration: {break_duration:.2f} minutes.")
+            else:
+                # Regular Clock-Out
+                clock_out_time = datetime.now().isoformat()
+                c.execute('SELECT id FROM clock_records WHERE staff_code = ? AND clock_out_time IS NULL', (staff_code,))
+                clock_record = c.fetchone()
+                if not clock_record:
+                    conn.close()
+                    QMessageBox.critical(self, 'Error', 'No clock-in record found')
+                    return
+                c.execute('UPDATE clock_records SET clock_out_time = ? WHERE id = ?', (clock_out_time, clock_record[0]))
+                conn.commit()
+                time_out = datetime.fromisoformat(clock_out_time).strftime('%H:%M')
+                QMessageBox.information(self, 'Success', f'Clock-out recorded successfully at {time_out}')
+                logging.info(f"Clock-out successful for staff code {staff_code} at {time_out}")
+            self.staff_code_entry.clear()
+
         else:
             conn.close()
             QMessageBox.critical(self, 'Error', 'Invalid action')
+        self.clock_in_button.setText("Enter Building")
+        self.clock_out_button.setText("Exit Building")
 
     def on_staff_code_change(self):
         staff_code = self.staff_code_entry.text()
@@ -378,17 +455,31 @@ class StaffClockInOutSystem(QMainWindow):
             conn.close()
             if staff:
                 self.greeting_label.setText(f'Hello, {staff[0]}!')
+
+                # Check if clocked in
+                conn = sqlite3.connect(databasePath)
+                c = conn.cursor()
+                c.execute('SELECT id FROM clock_records WHERE staff_code = ? AND clock_out_time IS NULL', (staff_code,))
+                clock_record = c.fetchone()
+                conn.close()
+
+                if clock_record:
+                    if self.on_break:
+                        self.clock_out_button.setText("End Break")
+                    else:
+                        self.clock_in_button.setText("Start Break")
+                else:
+                    self.clock_in_button.setText("Enter Building")
+            else:
+                self.greeting_label.setText('')
         elif staff_code == '123456':  # Admin code
             self.greeting_label.setText("Admin Mode Activated")
+            self.admin_button.show()
+            self.admin_button.click()
             self.admin_button.setVisible(True)  # Show the admin button
         elif staff_code == '654321':  # Exit code
             self.greeting_label.setText("Exit Mode Activated")
             self.closeEvent()
-            self.exit_button.show()
-            self.exit_button.click()
-        elif staff_code == '111111':
-            self.greeting_label.setText("Fire!")
-            self.fire()
         else:
             self.greeting_label.setText('')
             self.admin_button.hide()
@@ -527,6 +618,20 @@ class StaffClockInOutSystem(QMainWindow):
         name_label.setFont(QFont("Arial", 16))
         self.name_entry = QLineEdit()
         self.name_entry.setFont(QFont("Arial", 16))
+        self.name_entry.textChanged.connect(self.update_pin_label)
+        layout.addWidget(name_label)
+        layout.addWidget(self.name_entry)
+
+        # Set up completer for name_entry
+        completer = QCompleter(self.fetch_staff_names(), self)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.name_entry.setCompleter(completer)
+
+        self.pin_label = QLabel("PIN")
+        self.pin_label.setFont(QFont("Arial", 16))
+        layout.addWidget(self.pin_label)
+
         layout.addWidget(name_label)
         layout.addWidget(self.name_entry)
 
@@ -555,14 +660,14 @@ class StaffClockInOutSystem(QMainWindow):
         print_records_button.setFont(QFont("Arial", 16))
         print_records_button.setMinimumSize(150, 50)
         print_records_button.setStyleSheet("background-color: #6f42c1; color: white;")  # Purple shade
-        print_records_button.clicked.connect(self.get_printer_ip)
+        print_records_button.clicked.connect(self.preparePrint)
         layout.addWidget(print_records_button)
 
         generate_timesheet_button = QPushButton("Generate Timesheet")
         generate_timesheet_button.setFont(QFont("Arial", 16))
         generate_timesheet_button.setMinimumSize(150, 50)
         generate_timesheet_button.setStyleSheet("background-color: #17a2b8; color: white;")  # Teal shade
-        generate_timesheet_button.clicked.connect(lambda: self.generate_all_timesheets(20))
+        generate_timesheet_button.clicked.connect(lambda: self.generate_one_timesheet())
         layout.addWidget(generate_timesheet_button)
 
         settings_button = QPushButton("Settings")
@@ -587,6 +692,14 @@ class StaffClockInOutSystem(QMainWindow):
         self.add_comment_button.clicked.connect(self.add_comment)
         layout.addWidget(self.add_comment_button)
         admin_tab.exec()
+
+    def get_pin_for_label(self):
+        staff_name = self.name_entry.text().strip()
+        conn = sqlite3.connect(self.settings["printer_IP"])
+        c = conn.cursor()
+        c.execute("SELECT code FROM staffs WHERE name = ?", (staff_name,))
+        result = c.fetchone()
+        self.pin_label = QLabel(result)
 
     def add_comment(self):
         staff_name = self.name_entry.text().strip()
@@ -728,6 +841,28 @@ class StaffClockInOutSystem(QMainWindow):
             QMessageBox.critical(self, "Error", f"Unable to fetch records: {e}")
             return []
 
+    def update_pin_label(self):
+        """Update the PIN label dynamically based on the entered name."""
+        staff_name = self.name_entry.text().strip()
+        if not staff_name:
+            self.pin_label.setText("PIN: ")
+            return
+
+        try:
+            conn = sqlite3.connect(self.database_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT code FROM staff WHERE name LIKE ?", (f"%{staff_name}%",))
+            result = cursor.fetchone()
+            conn.close()
+
+            if result:
+                self.pin_label.setText(f"PIN: {result[0]}")
+            else:
+                self.pin_label.setText("PIN: Not Found")
+        except sqlite3.Error as e:
+            logging.error(f"Database error while fetching PIN: {e}")
+            self.pin_label.setText("PIN: Error")
+
     def show_record_selection_dialog(self):
         """Display clock records as buttons for the selected staff member."""
         logging.debug("Starting open_records_tab function")
@@ -824,6 +959,19 @@ class StaffClockInOutSystem(QMainWindow):
 
         dialog.exec()
         return comment_entry.text().strip() if comment_entry.text().strip() else None
+
+    def fetch_staff_names(self):
+        """Fetch all staff names from the database."""
+        try:
+            conn = sqlite3.connect(self.database_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM staff")
+            names = [row[0] for row in cursor.fetchall()]
+            conn.close()
+            return names
+        except sqlite3.Error as e:
+            logging.error(f"Error fetching staff names: {e}")
+            return []
 
     def open_records_tab(self):
         """Opens a fixed-size tab to view clock records for a selected staff."""
@@ -1004,23 +1152,24 @@ class StaffClockInOutSystem(QMainWindow):
             logging.error(f"Database error: {e}")
 
     def toggle_window_mode(self):
+        screen_geometry = QApplication.primaryScreen().geometry()
+
         if not self.isWindowed:
             # Switch to windowed mode
-            self.showNormal()
-            self.setFixedSize(800, 600)
             self.setWindowFlags(Qt.WindowType.Window)
-            self.show()
+            self.showNormal()
+            self.resize(800, 600)  # Default size for windowed mode
+            self.move(200,200)
             self.windowed_button.setText("Enter Fullscreen Mode")
             logging.info("Switched to windowed mode.")
         else:
             # Switch to fullscreen mode
-            self.showMaximized()
-            self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
-            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
+            self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
+            self.setGeometry(screen_geometry)  # Ensure it fills the screen
+            self.showFullScreen()
             self.windowed_button.setText("Enter Windowed Mode")
             logging.info("Switched to fullscreen mode.")
 
-        # Toggle the state
         self.isWindowed = not self.isWindowed
 
     def add_staff(self):
@@ -1074,11 +1223,20 @@ class StaffClockInOutSystem(QMainWindow):
                       (staff_code,))
             clock_records = c.fetchall()
 
-            # Insert staff details into archive_records
-            for record in clock_records:
+            # Archive records if any exist
+            if clock_records:
+                for record in clock_records:
+                    c.execute(
+                        'INSERT INTO archive_records (staff_name, staff_code, clock_in, clock_out, notes) VALUES (?, ?, ?, ?, ?)',
+                        (staff_name, staff_code, *record)
+                    )
+
+            # If no records exist, still archive the staff's details
+            if not clock_records:
                 c.execute(
-                    'INSERT INTO archive_records (staff_name, staff_code, clock_in, clock_out, notes) VALUES (?, ?, ?, ?, ?)',
-                    (staff_name, staff_code, *record))
+                    'INSERT INTO archive_records (staff_name, staff_code, clock_in, clock_out, notes) VALUES (?, ?, NULL, NULL, NULL)',
+                    (staff_name, staff_code)
+                )
 
             # Commit archive records
             conn.commit()
@@ -1249,14 +1407,56 @@ class StaffClockInOutSystem(QMainWindow):
         dialog.close()
 
     def preparePrint(self):
+        """Generate a temporary PDF for the selected staff and send it to the printer."""
         staff_name = self.name_entry.text().strip()
-        if staff_name:
-            file_path = f"Timesheets/{staff_name}_timesheet.pdf"
+        if not staff_name:
+            QMessageBox.warning(self, "Warning", "Please enter a valid staff name.")
+            logging.error(f"Error: Invalid staff name '{staff_name}'")
+            return
+
+        try:
+            # Fetch the records
+            conn = sqlite3.connect(databasePath)
+            cursor = conn.cursor()
+            cursor.execute('SELECT code FROM staff WHERE name = ?', (staff_name,))
+            staff = cursor.fetchone()
+
+            if not staff:
+                QMessageBox.critical(self, "Error", "Staff member not found.")
+                logging.error(f"Staff member '{staff_name}' not found.")
+                return
+
+            staff_code = staff[0]
+            cursor.execute('SELECT clock_in_time, clock_out_time FROM clock_records WHERE staff_code = ?',
+                           (staff_code,))
+            records = cursor.fetchall()
+
+        finally:
+            conn.close()
+
+        if not records:
+            QMessageBox.information(self, "Info", "No records found for this staff member.")
+            logging.warning(f"No records found for staff '{staff_name}'.")
+            return
+
+        # Path for the temporary PDF
+        file_path = os.path.abspath(os.path.join(tempPath, f"{staff_name}_temp.pdf"))
+
+        try:
+            # Generate the PDF
+            self.generate_pdf(file_path, staff_name, records)
+
+            # Print the PDF
             self.print_via_jetdirect(file_path)
-            logging.info(f'Prepared to print {staff_name}')
+
+            # Schedule the deletion of the temporary file
+            self.delete_pdf_after_delay(file_path, delay=10)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+            logging.error(f"Failed to prepare print for {staff_name}: {e}")
 
     def print_via_jetdirect(self, file_path):
-        printerIP = self.settings["printer_ IP"]
+        printerIP = self.settings["printer_IP"]
         printer_ip =printerIP
         printer_port = 9100
         try:
@@ -1270,6 +1470,7 @@ class StaffClockInOutSystem(QMainWindow):
         except Exception as e:
             print(f"Failed to print PDF: {e}")
             logging.error("failed to print")
+
 
     def get_date_range_for_timesheet(self, day_selected):
         today = datetime.now()
@@ -1320,6 +1521,67 @@ class StaffClockInOutSystem(QMainWindow):
             self.generate_timesheet(staff_name, details["role"], start_date, end_date, details["records"])
 
         logging.info(f"Timesheets generated for the period {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')}")
+
+    def generate_one_timesheet(self):
+        """
+        Generate a timesheet for the currently selected staff member from the admin tab.
+        """
+        staff_name = self.name_entry.text().strip()
+        if not staff_name:
+            QMessageBox.critical(self, "Error", "Please enter a valid staff name.")
+            logging.error("No staff name provided for timesheet generation.")
+            return
+
+        # Fetch staff details
+        conn = sqlite3.connect(databasePath)
+        cursor = conn.cursor()
+        cursor.execute("SELECT code FROM staff WHERE name = ?", (staff_name,))
+        staff = cursor.fetchone()
+        conn.close()
+
+        if not staff:
+            QMessageBox.critical(self, "Error", "Staff member not found.")
+            logging.error(f"Staff member '{staff_name}' not found.")
+            return
+
+        staff_code = staff[0]
+
+        start_day = self.settings["start_day"]
+        now = datetime.now()
+
+        # Calculate the previous month and year
+        prev_month = now.month - 1 if now.month > 1 else 12
+        prev_year = now.year if now.month > 1 else now.year - 1
+
+        # Validate the day and create the start_date
+        last_day_of_prev_month = calendar.monthrange(prev_year, prev_month)[1]
+        start_date_day = min(start_day, last_day_of_prev_month)  # Ensure start_day is valid
+        start_date = datetime(prev_year, prev_month, start_date_day)
+
+        end_date = datetime.now()
+
+        # Fetch clock records for the staff member
+        conn = sqlite3.connect(databasePath)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT clock_in_time, clock_out_time
+            FROM clock_records
+            WHERE staff_code = ? AND DATE(clock_in_time) BETWEEN ? AND ?
+        """, (staff_code, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')))
+        records = cursor.fetchall()
+        conn.close()
+
+        if not records:
+            QMessageBox.information(self, "Info", f"No records found for {staff_name} in the selected period.")
+            logging.info(f"No records found for {staff_name} between {start_date} and {end_date}.")
+            return
+
+        # Generate the timesheet
+        self.generate_timesheet(staff_name, "Unknown", start_date, end_date, records)
+        QMessageBox.information(self, "Success", f"Timesheet generated for {staff_name}.")
+        logging.info(f"Timesheet generated for {staff_name}.")
+
+
 
     def generate_timesheet(self, employee_name, role, start_date, end_date, records):
         # Create the PDF file path
