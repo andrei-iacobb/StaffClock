@@ -35,7 +35,7 @@ class DailyBackUp(QThread):
         while self.running:
             today = datetime.now()
             backup_time = today.strftime("%H:%M:%S")
-            if backup_time == "17:00:00":  # Trigger backup at midnight
+            if backup_time == "11:28:00":  # Trigger backup at midnight
                 self.perform_backup()
                 self.sleep(1)  # Avoid triggering multiple times during the same second
             else:

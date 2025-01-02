@@ -33,5 +33,6 @@ class TimesheetCheckerThread(QThread):
         else:
             return {"start_day": 21, "end_day": 20}  # Default range if settings are missing
 
+    #stop the method
     def stop(self):
         self.running = False

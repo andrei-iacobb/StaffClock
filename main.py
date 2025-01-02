@@ -6,9 +6,12 @@ import random
 import socket
 import keyboard
 import pyglet
+from functools import partial
 import logging
 from threading import Thread
 import json
+import subprocess
+import platform
 import time
 import sys
 from datetime import datetime, timedelta
@@ -75,7 +78,7 @@ def get_os_specific_path():
 
     # Ensure files exist or create defaults
     if not os.path.exists(settingsFilePath):
-        default_settings = {"start_day": 21, "end_day": 20}
+        default_settings = {"start_day": 21, "end_day": 20, "printer_IP": "10.60.1.146"}
         with open(settingsFilePath, "w") as file:
             json.dump(default_settings, file)
 
@@ -106,9 +109,6 @@ class StaffClockInOutSystem(QMainWindow):
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
         logging.info("UI setup complete.")
 
-        # Install event filter globally on the application
-        QApplication.instance().installEventFilter(self)
-        #self.standby_stage = 0  # 0: Not in standby, 1: Dimmed, 2: Fully Dimmed
         self.isWindowed = False
         # Paths
         self.backup_folder = os.path.join(os.path.dirname(__file__), "Backups")
@@ -179,7 +179,7 @@ class StaffClockInOutSystem(QMainWindow):
 
     def load_settings(self):
         settings_file = settingsFilePath
-        default_settings = {"start_day": 21, "end_day": 20}
+        default_settings = {"start_day": 21, "end_day": 20, "printer_IP": "10.60.1.146"}
 
         if os.path.exists(settings_file):
             with open(settings_file, "r") as file:
@@ -190,7 +190,7 @@ class StaffClockInOutSystem(QMainWindow):
             return default_settings
 
     def save_settings(self):
-        with open("settings.json", "w") as file:
+        with open(settingsFilePath, "w") as file:
             json.dump(self.settings, file)
 
     def check_timesheet_generation(self):
@@ -311,10 +311,21 @@ class StaffClockInOutSystem(QMainWindow):
 
         self.central_widget.installEventFilter(self)
 
+        main_layout.addWidget(self.create_footer())
+
         # Set Background Style
         self.setStyleSheet(
             "background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 #2b2b2b, stop:1 #444); color: white;"
         )
+
+    def create_footer(self):
+        """Create a smaller footer with fixed size."""
+        footer = QLabel("© 2025 Andrei Iacob. All rights reserved.")
+        footer.setFont(QFont("Arial", 10))  # Set smaller font size
+        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        footer.setFixedHeight(30)  # Set fixed height for the footer
+        footer.setStyleSheet("color: gray; margin: 0; padding: 0;")  # Minimal styling
+        return footer
 
     def clock_action(self, action, staff_code):
         conn = sqlite3.connect(databasePath)
@@ -369,8 +380,7 @@ class StaffClockInOutSystem(QMainWindow):
                 self.greeting_label.setText(f'Hello, {staff[0]}!')
         elif staff_code == '123456':  # Admin code
             self.greeting_label.setText("Admin Mode Activated")
-            self.admin_button.show()
-            self.admin_button.click()
+            self.admin_button.setVisible(True)  # Show the admin button
         elif staff_code == '654321':  # Exit code
             self.greeting_label.setText("Exit Mode Activated")
             self.closeEvent()
@@ -382,8 +392,6 @@ class StaffClockInOutSystem(QMainWindow):
         else:
             self.greeting_label.setText('')
             self.admin_button.hide()
-            self.exit_button.hide()
-
 
     def fire(self):
         logging.info("Fire system triggerd!")
@@ -436,25 +444,45 @@ class StaffClockInOutSystem(QMainWindow):
             logging.info("Exiting Database")
             conn.close()
 
+            self.print_via_jetdirect('fire.pdf')
+
     def open_settings_menu(self):
+        """
+        Open the settings dialog, including start day, end day, and printer IP settings.
+        """
         settings_dialog = QDialog(self)
         settings_dialog.setWindowTitle("Settings")
-        settings_dialog.setFixedSize(300, 200)
+        settings_dialog.setFixedSize(400, 250)
 
         layout = QVBoxLayout(settings_dialog)
         layout.setSpacing(20)
         layout.setContentsMargins(20, 20, 20, 20)
 
+        # Start Day and End Day (Side by Side)
+        day_layout = QHBoxLayout()
         start_label = QLabel("Start Day:")
         self.start_day_input = QLineEdit(str(self.settings["start_day"]))
-        layout.addWidget(start_label)
-        layout.addWidget(self.start_day_input)
+        self.start_day_input.setFixedWidth(80)
 
         end_label = QLabel("End Day:")
         self.end_day_input = QLineEdit(str(self.settings["end_day"]))
-        layout.addWidget(end_label)
-        layout.addWidget(self.end_day_input)
+        self.end_day_input.setFixedWidth(80)
 
+        day_layout.addWidget(start_label)
+        day_layout.addWidget(self.start_day_input)
+        day_layout.addSpacing(40)  # Add some space between Start and End inputs
+        day_layout.addWidget(end_label)
+        day_layout.addWidget(self.end_day_input)
+        layout.addLayout(day_layout)
+
+        # Printer IP Address Input
+        ip_label = QLabel("Printer IP:")
+        self.printer_ip_input = QLineEdit(self.settings.get("printer_IP", ""))
+        self.printer_ip_input.setPlaceholderText("Enter Printer IP Address")
+        layout.addWidget(ip_label)
+        layout.addWidget(self.printer_ip_input)
+
+        # Save Button
         save_button = QPushButton("Save Settings")
         save_button.clicked.connect(self.save_settings_from_menu)
         layout.addWidget(save_button)
@@ -462,21 +490,29 @@ class StaffClockInOutSystem(QMainWindow):
         settings_dialog.exec()
 
     def save_settings_from_menu(self):
+        """
+        Save the settings from the settings menu.
+        """
         try:
+            # Validate and save start and end days
             start_day = int(self.start_day_input.text())
             end_day = int(self.end_day_input.text())
-
             if not (1 <= start_day <= 31 and 1 <= end_day <= 31):
                 raise ValueError("Days must be between 1 and 31.")
-
             self.settings["start_day"] = start_day
             self.settings["end_day"] = end_day
+
+            # Save Printer IP
+            printer_ip = self.printer_ip_input.text().strip()
+            if not printer_ip:
+                raise ValueError("Printer IP cannot be empty.")
+            self.settings["printer_IP"] = printer_ip
+
             self.save_settings()
 
             QMessageBox.information(self, "Success", "Settings saved successfully.")
         except ValueError as e:
             QMessageBox.critical(self, "Error", f"Invalid input: {e}")
-
 
     def open_admin_tab(self):
         logging.info("Opening admin tab")
@@ -519,7 +555,7 @@ class StaffClockInOutSystem(QMainWindow):
         print_records_button.setFont(QFont("Arial", 16))
         print_records_button.setMinimumSize(150, 50)
         print_records_button.setStyleSheet("background-color: #6f42c1; color: white;")  # Purple shade
-        print_records_button.clicked.connect(self.preparePrint)
+        print_records_button.clicked.connect(self.get_printer_ip)
         layout.addWidget(print_records_button)
 
         generate_timesheet_button = QPushButton("Generate Timesheet")
@@ -593,67 +629,6 @@ class StaffClockInOutSystem(QMainWindow):
 
         comment_menu.exec()
 
-    def enter_standby_mode(self):
-        """Enter standby mode in two stages."""
-        if self.standby_stage == 0:
-            logging.info("Entering first stage of standby mode...")
-            self.standby_stage = 1
-
-            # Dim screen slightly and add standby text
-            self.standby_label = QLabel("Standby Mode\nMove your mouse or press a key to wake.", self.central_widget)
-            self.standby_label.setFont(QFont("Arial", 24, QFont.Weight.Bold))
-            self.standby_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.standby_label.setStyleSheet("background-color: rgba(0, 0, 0, 0.5); color: white;")
-            self.standby_label.setGeometry(self.central_widget.rect())
-            self.standby_label.show()
-            return
-
-        if self.standby_stage == 1:
-            logging.info("Entering second stage of standby mode...")
-            self.standby_stage = 2
-
-            # Fully dim the screen
-            self.standby_label.setStyleSheet("background-color: rgba(0, 0, 0, 0.8); color: white;")
-
-    def exit_standby_mode(self):
-        """Exit standby mode and restore normal operations."""
-        if self.standby_stage == 0:
-            logging.info("Not in standby mode. No action needed.")
-            return
-
-        logging.info("Exiting standby mode...")
-        self.standby_stage = 0  # Reset standby stage
-
-        # Remove standby overlay
-        if hasattr(self, 'standby_label'):
-            self.standby_label.deleteLater()
-            del self.standby_label
-
-        # Restart UI updates
-        self.clock_timer.start()
-
-        # Restore central widget visibility
-        if hasattr(self, 'central_widget') and self.central_widget.isVisible():
-            self.central_widget.show()
-
-    def eventFilter(self, source, event):
-        """Monitor interactions to exit standby mode."""
-        if event.type() in {QEvent.Type.MouseMove, QEvent.Type.KeyPress}:
-            logging.info(f"User interaction detected. Standby stage: {self.standby_stage}")
-
-            # Exit standby mode directly
-            if self.standby_stage > 0:
-                self.exit_standby_mode()
-                self.inactivity_timer.start()  # Reset inactivity timer
-            return True  # Event handled
-
-        return super().eventFilter(source, event)
-
-    def delete_central_widget(self):
-        logging.debug("Deleting central widget.")
-        self.central_widget.deleteLater()
-        self.central_widget = None
-
     def add_staff_comment(self, staff_name, parent_menu):
         parent_menu.close()  # Close the parent menu
 
@@ -699,44 +674,159 @@ class StaffClockInOutSystem(QMainWindow):
             logging.error(f"Database error: {e}")
 
     def add_clock_record_comment(self, staff_code, parent_menu):
-        parent_menu.close()  # Close the parent menu
+        """Allow the user to select a clock record and add a comment."""
+        parent_menu.close()
 
-        # Fetch clock records for the staff
-        conn = sqlite3.connect(databasePath)
-        c = conn.cursor()
-        c.execute("SELECT id, clock_in_time, clock_out_time FROM clock_records WHERE staff_code = ?", (staff_code,))
-        records = c.fetchall()
-        conn.close()
-
+        # Fetch clock records
+        records = self.fetch_clock_records(staff_code)
         if not records:
             QMessageBox.information(self, "Info", "No clock records found for this staff member.")
             return
 
-        # Open a dialog to list clock records and add a comment
-        record_dialog = QDialog(self)
-        record_dialog.setWindowTitle("Add Comment to Clock Record")
-        record_dialog.setFixedSize(500, 400)
-        layout = QVBoxLayout(record_dialog)
-        layout.setSpacing(20)
-        layout.setContentsMargins(40, 40, 40, 40)
+        # Show selection dialog
+        record_id = self.show_record_selection_dialog()
+        if record_id:
+            self.add_comment_to_clock_record(record_id)
 
-        record_label = QLabel("Select a Clock Record:")
-        record_label.setFont(QFont("Arial", 16))
-        layout.addWidget(record_label)
+    def add_comment_to_record(self, record_id):
+        """Open a dialog to add a comment to a specific clock record."""
+        comment_dialog = QDialog(self)
+        comment_dialog.setWindowTitle("Add Comment to Clock Record")
+        comment_dialog.setFixedSize(400, 200)
 
-        # Create buttons for each record
+        layout = QVBoxLayout(comment_dialog)
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        comment_label = QLabel("Enter Comment:")
+        comment_label.setFont(QFont("Arial", 14))
+        layout.addWidget(comment_label)
+
+        comment_entry = QLineEdit()
+        comment_entry.setFont(QFont("Arial", 14))
+        layout.addWidget(comment_entry)
+
+        save_button = QPushButton("Save Comment")
+        save_button.setFont(QFont("Arial", 14))
+        save_button.clicked.connect(lambda: self.save_clock_reocrd_comment(record_id, comment_entry.text(), comment_dialog))
+        layout.addWidget(save_button)
+
+        comment_dialog.exec()
+
+    def fetch_clock_records(self, staff_code):
+        """Retrieve clock records for a specific staff member."""
+        try:
+            conn = sqlite3.connect(self.database_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, clock_in_time, clock_out_time FROM clock_records WHERE staff_code = ?",
+                           (staff_code,))
+            records = cursor.fetchall()
+            conn.close()
+            return records
+        except sqlite3.Error as e:
+            logging.error(f"Database error while fetching records: {e}")
+            QMessageBox.critical(self, "Error", f"Unable to fetch records: {e}")
+            return []
+
+    def show_record_selection_dialog(self):
+        """Display clock records as buttons for the selected staff member."""
+        logging.debug("Starting open_records_tab function")
+        staff_name = self.name_entry.text().strip()
+        if not staff_name:
+            QMessageBox.critical(self, "Error", "Please enter a valid staff name.")
+            logging.error(f"Error: Invalid staff name '{staff_name}'")
+            return
+
+        try:
+            conn = sqlite3.connect(databasePath)
+            cursor = conn.cursor()
+            cursor.execute('SELECT code FROM staff WHERE name = ?', (staff_name,))
+            staff = cursor.fetchone()
+
+            if not staff:
+                QMessageBox.critical(self, "Error", "Staff member not found.")
+                logging.error(f"Staff member '{staff_name}' not found.")
+                return
+
+            staff_code = staff[0]
+            cursor.execute('SELECT id, clock_in_time, clock_out_time FROM clock_records WHERE staff_code = ?',
+                           (staff_code,))
+            records = cursor.fetchall()
+            conn.close()
+
+            if not records:
+                QMessageBox.information(self, "Info", "No records found for this staff member.")
+                logging.warning(f"No records found for staff '{staff_name}'.")
+                return
+
+        except sqlite3.Error as e:
+            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            logging.error(f"Database error occurred: {e}")
+            return
+
+        # Create the dialog
+        records_dialog = QDialog(self)
+        records_dialog.setWindowTitle(f"Clock Records for {staff_name}")
+        records_dialog.setFixedSize(500, 900)
+
+        # Position the dialog at the top of the screen
+        screen_geometry = QApplication.primaryScreen().geometry()
+        records_dialog.move(screen_geometry.x(), screen_geometry.y())
+
+        layout = QVBoxLayout(records_dialog)
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Add a button for each record
         for record in records:
             record_id, clock_in, clock_out = record
-            button_text = f"Clock In: {clock_in}, Clock Out: {clock_out or 'N/A'}"
+            clock_in_time = (
+                datetime.fromisoformat(clock_in).strftime('%H:%M %d/%m/%y') if clock_in else "N/A"
+            )
+            clock_out_time = (
+                datetime.fromisoformat(clock_out).strftime('%H:%M %d/%m/%y') if clock_out else "N/A"
+            )
+
+            button_text = f"Clock In: {clock_in_time}, Clock Out: {clock_out_time}"
             record_button = QPushButton(button_text)
             record_button.setFont(QFont("Arial", 12))
-            record_button.clicked.connect(lambda _, rid=record_id: self.open_records_tab)
+            record_button.setMinimumSize(400, 40)
+            record_button.clicked.connect(lambda _, rid=record_id: self.add_comment_to_record(rid))
             layout.addWidget(record_button)
 
-        record_dialog.exec()
+        # Add a Close button
+        close_button = QPushButton("Close")
+        close_button.setFont(QFont("Arial", 14))
+        close_button.clicked.connect(records_dialog.close)
+        layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        records_dialog.exec()
+
+    def get_user_comment(self, title):
+        """Display a dialog to collect a comment from the user."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(title)
+        dialog.setFixedSize(400, 200)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(20)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        label = QLabel("Enter Comment:")
+        comment_entry = QLineEdit()
+
+        save_button = QPushButton("Save")
+        save_button.clicked.connect(dialog.accept)
+
+        layout.addWidget(label)
+        layout.addWidget(comment_entry)
+        layout.addWidget(save_button)
+
+        dialog.exec()
+        return comment_entry.text().strip() if comment_entry.text().strip() else None
 
     def open_records_tab(self):
-        """Opens a dynamic tab to view clock records for a selected staff."""
+        """Opens a fixed-size tab to view clock records for a selected staff."""
         logging.debug("Starting open_records_tab function")
         staff_name = self.name_entry.text().strip()
         if not staff_name:
@@ -774,10 +864,14 @@ class StaffClockInOutSystem(QMainWindow):
         # Create a dialog for displaying records
         records_dialog = QDialog(self)
         records_dialog.setWindowTitle(f"Clock Records for {staff_name}")
-        records_dialog.setMinimumWidth(600)
+        records_dialog.setFixedSize(500, 1000)
+
+        # Position the dialog at the top of the screen
+        screen_geometry = QApplication.primaryScreen().geometry()
+        records_dialog.move(screen_geometry.x(), screen_geometry.y())
 
         layout = QVBoxLayout(records_dialog)
-        layout.setSpacing(20)
+        layout.setSpacing(10)
         layout.setContentsMargins(20, 20, 20, 20)
 
         # Add a QTableWidget for displaying records
@@ -789,8 +883,15 @@ class StaffClockInOutSystem(QMainWindow):
 
         # Populate the table with records
         for row, record in enumerate(records):
-            clock_in_item = QTableWidgetItem(record[1] if record[1] else "N/A")
-            clock_out_item = QTableWidgetItem(record[2] if record[2] else "N/A")
+            clock_in_time = (
+                datetime.fromisoformat(record[1]).strftime('%H:%M %d/%m/%y') if record[1] else "N/A"
+            )
+            clock_out_time = (
+                datetime.fromisoformat(record[2]).strftime('%H:%M %d/%m/%y') if record[2] else "N/A"
+            )
+
+            clock_in_item = QTableWidgetItem(clock_in_time)
+            clock_out_item = QTableWidgetItem(clock_out_time)
             notes_item = QTableWidgetItem(record[3] if record[3] else "N/A")
 
             table.setItem(row, 0, clock_in_item)
@@ -799,18 +900,19 @@ class StaffClockInOutSystem(QMainWindow):
 
             # Add an "Edit" button to each row
             edit_button = QPushButton("Edit")
+            edit_button.setFont(QFont("Arial", 12))  # Smaller font for better visibility
+            edit_button.setMinimumSize(80, 30)  # Smaller button size
             edit_button.clicked.connect(lambda _, rid=record[0]: self.edit_clock_record(rid))
             table.setCellWidget(row, 3, edit_button)
 
         layout.addWidget(table)
 
-        # Adjust dialog height dynamically
-        rows_height = table.verticalHeader().length()
-        records_dialog.setFixedHeight(200 + rows_height)
-
+        # Add a Close button at the bottom
         close_button = QPushButton("Close")
+        close_button.setFont(QFont("Arial", 14))
+        close_button.setMinimumSize(120, 40)
         close_button.clicked.connect(records_dialog.close)
-        layout.addWidget(close_button)
+        layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         records_dialog.exec()
 
@@ -882,24 +984,24 @@ class StaffClockInOutSystem(QMainWindow):
             QMessageBox.critical(self, "Error", f"Database error: {e}")
             logging.error(f"Database error occurred: {e}")
 
-    def save_clock_record_comment(self, record_id, comment, dialog):
+    def save_clock_reocrd_comment(self, record_id, comment, dialog):
+        """Save the comment to the database."""
         if not comment.strip():
             QMessageBox.warning(self, "Warning", "Comment cannot be empty.")
             return
 
         try:
             conn = sqlite3.connect(databasePath)
-            c = conn.cursor()
-            c.execute("UPDATE clock_records SET notes = ? WHERE id = ?", (comment, record_id))
+            cursor = conn.cursor()
+            cursor.execute("UPDATE clock_records SET notes = ? WHERE id = ?", (comment.strip(), record_id))
             conn.commit()
             conn.close()
             QMessageBox.information(self, "Success", "Comment added to clock record.")
-            logging.info(f"Added comment to clock record {record_id}: {comment}")
             dialog.close()
+            logging.info(f"Added comment to record ID {record_id}: {comment}")
         except sqlite3.Error as e:
             QMessageBox.critical(self, "Error", f"Database error: {e}")
             logging.error(f"Database error: {e}")
-
 
     def toggle_window_mode(self):
         if not self.isWindowed:
@@ -920,7 +1022,6 @@ class StaffClockInOutSystem(QMainWindow):
 
         # Toggle the state
         self.isWindowed = not self.isWindowed
-
 
     def add_staff(self):
         staff_name = self.name_entry.text().strip()
@@ -947,7 +1048,6 @@ class StaffClockInOutSystem(QMainWindow):
         else:
             QMessageBox.warning(self, "Warning", "Could not add staff.")
             logging.info(f"Could not add staff.{staff_name}")
-
 
     def remove_staff(self):
         staff_name = self.name_entry.text().strip()
@@ -1037,7 +1137,12 @@ class StaffClockInOutSystem(QMainWindow):
     def open_pdf(self, file_path):
         """Open the generated PDF using the default system viewer."""
         try:
-            os.startfile(file_path)  # Windows-specific method
+            if platform.system() == "Windows":
+                os.startfile(file_path)  # Windows-specific
+            elif platform.system() == "Darwin":  # macOS
+                subprocess.run(["open", file_path], check=True)
+            else:  # Linux/Other
+                subprocess.run(["xdg-open", file_path], check=True)
             logging.info(f"Opened PDF at '{file_path}' using the default viewer.")
         except Exception as e:
             logging.error(f"Failed to open PDF: {e}")
@@ -1099,6 +1204,49 @@ class StaffClockInOutSystem(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred: {e}")
 
+    def get_printer_ip(self):
+        """
+        Display a dialog for the user to enter the printer's IP address.
+        """
+        # Create dialog
+        printer_ip_dialog = QDialog(self)
+        printer_ip_dialog.setWindowTitle("Enter Printer IP")
+        printer_ip_dialog.setFixedSize(300, 150)
+
+        # Set layout
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        # Create input field for IP address
+        ip_input = QLineEdit(printer_ip_dialog)
+        ip_input.setPlaceholderText("Enter Printer IP Address")
+        ip_input.setStyleSheet("padding: 10px; border: 1px solid #ccc; border-radius: 5px;")
+        layout.addWidget(ip_input)
+
+        # Create "Submit" button
+        submit_button = QPushButton("Submit", printer_ip_dialog)
+        submit_button.setStyleSheet("background-color: #007BFF; color: white; padding: 10px; border-radius: 5px;")
+        submit_button.clicked.connect(lambda: self.handle_printer_ip(ip_input.text(), printer_ip_dialog))
+        layout.addWidget(submit_button)
+
+        # Apply layout and show dialog
+        printer_ip_dialog.setLayout(layout)
+        printer_ip_dialog.exec()
+
+    def handle_printer_ip(self, ip_address, dialog):
+        """
+        Handle the entered IP address and close the dialog.
+        """
+        if not ip_address.strip():
+            QMessageBox.warning(self, "Invalid Input", "Please enter a valid IP address.")
+            return
+
+        # You can store or use the IP address here
+        logging.info(f"Printer IP entered: {ip_address}")
+
+        # Close the dialog
+        dialog.close()
 
     def preparePrint(self):
         staff_name = self.name_entry.text().strip()
@@ -1108,7 +1256,8 @@ class StaffClockInOutSystem(QMainWindow):
             logging.info(f'Prepared to print {staff_name}')
 
     def print_via_jetdirect(self, file_path):
-        printer_ip = "10.60.1.146"
+        printerIP = self.settings["printer_ IP"]
+        printer_ip =printerIP
         printer_port = 9100
         try:
             with open(file_path, "rb") as pdf_file:
