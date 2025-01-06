@@ -1,3 +1,5 @@
+import logging
+
 from PyQt6.QtCore import QThread, pyqtSignal
 from datetime import datetime, timedelta
 import os
@@ -21,21 +23,14 @@ class DailyBackUp(QThread):
 
     def create_backup_directory(self):
         """Create the backup directory if it doesn't exist."""
-        try:
-            if not os.path.exists(self.backup_folder):
-                os.makedirs(self.backup_folder)
-                print(f"Backup directory created: {self.backup_folder}")
-            else:
-                print(f"Backup directory already exists: {self.backup_folder}")
-        except Exception as e:
-            print(f"Failed to create backup directory: {e}")
-            self.daily_back_up.emit(f"Failed to create backup directory: {e}")
+        if not os.path.exists(self.backup_folder):
+            os.makedirs(self.backup_folder)
 
     def run(self):
         while self.running:
             today = datetime.now()
             backup_time = today.strftime("%H:%M:%S")
-            if backup_time == "13:45:30":  # Trigger backup at midnight
+            if backup_time == "21:42:00":  # Trigger backup at midnight
                 self.perform_backup()
                 self.sleep(1)  # Avoid triggering multiple times during the same second
             else:

@@ -1,5 +1,4 @@
 import os
-import platform
 import shutil
 import sqlite3
 import datetime
@@ -12,6 +11,7 @@ from functools import partial
 import logging
 from threading import Thread
 import json
+import ctypes
 import subprocess
 import platform
 import zipfile
@@ -68,17 +68,20 @@ def get_os_specific_path():
     else:
         raise OSError("Unsupported Operating System")
 
+    backup_folder = os.path.join(base_path, "Backups")
+
     # Ensure directories exist
     os.makedirs(program_data_path, exist_ok=True)
     os.makedirs(tempPath, exist_ok=True)
     os.makedirs(permanentPath, exist_ok=True)
+    os.makedirs(backup_folder, exist_ok=True)
 
     # Paths for specific files
     settingsFilePath = os.path.join(program_data_path, "settings.json")
     log_file = os.path.join(program_data_path, "staff_clock_system.log")
     logoPath = os.path.join(program_data_path, "Logo.png")
     databasePath = os.path.join(program_data_path, "staff_hours.db")
-    backup_folder = os.path.join(base_path, "Backups")
+
 
     configure_logging()
 
@@ -121,27 +124,46 @@ def check_and_restore_file(primary_path, backup_folder, generate_default=None):
 def generate_default_database(path):
     conn = sqlite3.connect(path)
     c = conn.cursor()
-    # Example schema creation
+
+    # Create the staff table
     c.execute('''
         CREATE TABLE IF NOT EXISTS staff (
-            id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
-            code INTEGER UNIQUE NOT NULL
+            code TEXT UNIQUE PRIMARY KEY,
+            fingerprint TEXT,
+            role TEXT,
+            notes TEXT
         )
     ''')
+
+    # Create the clock_records table
     c.execute('''
         CREATE TABLE IF NOT EXISTS clock_records (
-            id INTEGER PRIMARY KEY,
-            staff_code INTEGER NOT NULL,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            staff_code TEXT NOT NULL,
             clock_in_time TEXT,
             clock_out_time TEXT,
+            notes TEXT,
             break_time TEXT,
             FOREIGN KEY(staff_code) REFERENCES staff(code)
         )
     ''')
+
+    # Create the archive_records table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS archive_records (
+            staff_name TEXT,
+            staff_code TEXT,
+            clock_in TEXT,
+            clock_out TEXT,
+            notes TEXT
+        )
+    ''')
+
     conn.commit()
     conn.close()
     logging.info(f"Default database created at {path}")
+
 
 def generate_default_settings(path):
     default_settings = {"start_day": 21, "end_day": 20, "printer_IP": "10.60.1.146"}
@@ -160,6 +182,7 @@ def configure_logging():
 class StaffClockInOutSystem(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.role_entry = QLineEdit()
         self.setWindowTitle("Staff Digital Timesheet System")
         self.showMaximized()
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
@@ -480,6 +503,9 @@ class StaffClockInOutSystem(QMainWindow):
         elif staff_code == '654321':  # Exit code
             self.greeting_label.setText("Exit Mode Activated")
             self.closeEvent()
+        elif staff_code =='111111':
+            self.greeting_label.setText("Fire!!!!!!")
+            self.fire()
         else:
             self.greeting_label.setText('')
             self.admin_button.hide()
@@ -622,8 +648,7 @@ class StaffClockInOutSystem(QMainWindow):
         layout.addWidget(name_label)
         layout.addWidget(self.name_entry)
 
-        # Set up completer for name_entry
-        completer = QCompleter(self.fetch_staff_names(), self)
+        completer = QCompleter(self.fetch_staff_names_and_roles(), self)
         completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.name_entry.setCompleter(completer)
@@ -693,13 +718,26 @@ class StaffClockInOutSystem(QMainWindow):
         layout.addWidget(self.add_comment_button)
         admin_tab.exec()
 
-    def get_pin_for_label(self):
+    def update_pin_label(self):
+        """Update the PIN label dynamically based on the entered name and role."""
         staff_name = self.name_entry.text().strip()
-        conn = sqlite3.connect(self.settings["printer_IP"])
-        c = conn.cursor()
-        c.execute("SELECT code FROM staffs WHERE name = ?", (staff_name,))
-        result = c.fetchone()
-        self.pin_label = QLabel(result)
+
+        try:
+            conn = sqlite3.connect(self.database_path)
+            cursor = conn.cursor()
+            # Fetch the PIN based on the cleaned staff name
+            cursor.execute("SELECT code FROM staff WHERE name = ?", (staff_name,))
+            result = cursor.fetchone()
+            conn.close()
+
+            if result:
+                staff_code = result[0]
+                self.pin_label.setText(f"PIN: {staff_code}")
+            else:
+                self.pin_label.setText("PIN: Not Found")
+        except sqlite3.Error as e:
+            logging.error(f"Database error while fetching PIN: {e}")
+            self.pin_label.setText("PIN: Error")
 
     def add_comment(self):
         staff_name = self.name_entry.text().strip()
@@ -960,17 +998,17 @@ class StaffClockInOutSystem(QMainWindow):
         dialog.exec()
         return comment_entry.text().strip() if comment_entry.text().strip() else None
 
-    def fetch_staff_names(self):
-        """Fetch all staff names from the database."""
+    def fetch_staff_names_and_roles(self):
+        """Fetch all staff names and roles from the database."""
         try:
             conn = sqlite3.connect(self.database_path)
             cursor = conn.cursor()
             cursor.execute("SELECT name FROM staff")
-            names = [row[0] for row in cursor.fetchall()]
+            names_and_roles = [f"{row[0]}" for row in cursor.fetchall()]
             conn.close()
-            return names
+            return names_and_roles
         except sqlite3.Error as e:
-            logging.error(f"Error fetching staff names: {e}")
+            logging.error(f"Error fetching staff names and roles: {e}")
             return []
 
     def open_records_tab(self):
@@ -1174,29 +1212,38 @@ class StaffClockInOutSystem(QMainWindow):
 
     def add_staff(self):
         staff_name = self.name_entry.text().strip()
+
+        if not staff_name:
+            QMessageBox.warning(self, "Warning", "Please enter a valid name.")
+            logging.error("Missing staff name.")
+            return
+
         max_retries = 1000
         retries = 0
         while retries < max_retries:
-            if staff_name:
+            staff_code = random.randint(1000, 9999)
+            conn = sqlite3.connect(databasePath)
+            c = conn.cursor()
+            while c.execute('SELECT * FROM staff WHERE code = ?', (staff_code,)).fetchone():
                 staff_code = random.randint(1000, 9999)
-                conn = sqlite3.connect(databasePath)
-                c = conn.cursor()
-                while c.execute('SELECT * FROM staff WHERE code = ?', (staff_code,)).fetchone():
-                    staff_code = random.randint(1000, 9999)
-                try:
-                    c.execute('INSERT INTO staff (name, code) VALUES (?, ?)', (staff_name, staff_code))
-                    conn.commit()
-                    QMessageBox.information(self, 'Success', f'Staff member {staff_name} added with code {staff_code}')
-                    logging.info(f'Staff member {staff_name} added with code {staff_code}')
-                    break
-                except sqlite3.Error as e:
-                    QMessageBox.critical(self, 'Database Error', f'An error occurred: {e}')
-                    logging.error(f'Database error occurred: {e}')
-                finally:
-                    conn.close()
+
+            try:
+                c.execute('INSERT INTO staff (name, code) VALUES (?, ?)', (staff_name, staff_code))
+                conn.commit()
+                QMessageBox.information(
+                    self, 'Success', f'Staff member {staff_name} with code {staff_code}.'
+                )
+                logging.info(f"Staff member {staff_name} added with code {staff_code}.")
+                break
+            except sqlite3.Error as e:
+                QMessageBox.critical(self, 'Database Error', f'An error occurred: {e}')
+                logging.error(f"Database error occurred: {e}")
+            finally:
+                conn.close()
+            retries += 1
         else:
-            QMessageBox.warning(self, "Warning", "Could not add staff.")
-            logging.info(f"Could not add staff.{staff_name}")
+            QMessageBox.warning(self, "Warning", "Could not add staff after multiple retries.")
+            logging.error(f"Failed to add staff member {staff_name}.")
 
     def remove_staff(self):
         staff_name = self.name_entry.text().strip()
