@@ -16,7 +16,7 @@ import platform
 import zipfile
 import qrcode
 import cv2
-from pyzbar.pyzbar import decode
+
 import time
 import sys
 from datetime import datetime, timedelta
