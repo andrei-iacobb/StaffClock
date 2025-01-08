@@ -421,27 +421,29 @@ class StaffClockInOutSystem(QMainWindow):
         logging.info(f"Generated QR code for staff code {staff_code} at {qr_code_file}")
 
     def scan_qr_code(self):
-        """Open the camera to scan QR codes."""
+        """Open the camera to scan QR codes using OpenCV."""
         cap = cv2.VideoCapture(0)  # 0 is usually the default camera
+        detector = cv2.QRCodeDetector()  # OpenCV QR Code Detector
+
         logging.info("Camera started for QR scanning...")
 
-        while True:
+        while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
-            for qr_code in decode(frame):
-                staff_code = qr_code.data.decode('utf-8')
-                logging.info(f"QR Code scanned: {staff_code}")
+            # Detect and decode QR Code
+            data, bbox, _ = detector.detectAndDecode(frame)
+            if data:
+                logging.info(f"QR Code detected: {data}")
+                staff_code = data
 
                 # Automatically clock in/out after scanning
                 self.process_clock_action(staff_code)
 
                 cv2.putText(frame, f"Code: {staff_code}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                 cv2.imshow("QR Scanner", frame)
-                cap.release()
-                cv2.destroyAllWindows()
-                return  # Exit after a successful scan
+                break
 
             cv2.imshow("QR Scanner", frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit the scanner manually
