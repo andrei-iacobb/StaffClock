@@ -11,10 +11,12 @@ from functools import partial
 import logging
 from threading import Thread
 import json
-import ctypes
 import subprocess
 import platform
 import zipfile
+import qrcode
+import cv2
+from pyzbar.pyzbar import decode
 import time
 import sys
 from datetime import datetime, timedelta
@@ -164,7 +166,6 @@ def generate_default_database(path):
     conn.close()
     logging.info(f"Default database created at {path}")
 
-
 def generate_default_settings(path):
     default_settings = {"start_day": 21, "end_day": 20, "printer_IP": "10.60.1.146"}
     with open(path, "w") as file:
@@ -188,6 +189,7 @@ class StaffClockInOutSystem(QMainWindow):
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
         logging.info("UI setup complete.")
+
 
         self.isWindowed = False
         # Paths
@@ -344,6 +346,13 @@ class StaffClockInOutSystem(QMainWindow):
         clock_buttons_layout = QHBoxLayout()
         clock_buttons_layout.setSpacing(20)
 
+        self.qr_scan_button = QPushButton("Scan QR Code")
+        self.qr_scan_button.setFont(QFont("Arial", 18))
+        self.qr_scan_button.setMinimumSize(250, 60)
+        self.qr_scan_button.setStyleSheet("background-color: #17a2b8; color: white; border-radius: 8px;")
+        self.qr_scan_button.clicked.connect(self.scan_qr_code)
+        button_layout.addWidget(self.qr_scan_button)
+
         self.clock_in_button = QPushButton("Enter Building")
         self.clock_in_button.setFont(QFont("Arial", 18))
         self.clock_in_button.setMinimumSize(250, 60)
@@ -395,6 +404,51 @@ class StaffClockInOutSystem(QMainWindow):
         footer.setFixedHeight(30)  # Set fixed height for the footer
         footer.setStyleSheet("color: gray; margin: 0; padding: 0;")  # Minimal styling
         return footer
+
+    def generate_qr_code(self, staff_code):
+        """Generate a QR code for the given staff code and save it."""
+        qr_folder = os.path.join(os.path.dirname(__file__), "QR_Codes")
+        os.makedirs(qr_folder, exist_ok=True)
+        qr_code_file = os.path.join(qr_folder, f"{staff_code}.png")
+
+        # Generate QR Code
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(staff_code)
+        qr.make(fit=True)
+        img = qr.make_image(fill="black", back_color="white")
+        img.save(qr_code_file)
+
+        logging.info(f"Generated QR code for staff code {staff_code} at {qr_code_file}")
+
+    def scan_qr_code(self):
+        """Open the camera to scan QR codes."""
+        cap = cv2.VideoCapture(0)  # 0 is usually the default camera
+        logging.info("Camera started for QR scanning...")
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            for qr_code in decode(frame):
+                staff_code = qr_code.data.decode('utf-8')
+                logging.info(f"QR Code scanned: {staff_code}")
+
+                # Automatically clock in/out after scanning
+                self.process_clock_action(staff_code)
+
+                cv2.putText(frame, f"Code: {staff_code}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                cv2.imshow("QR Scanner", frame)
+                cap.release()
+                cv2.destroyAllWindows()
+                return  # Exit after a successful scan
+
+            cv2.imshow("QR Scanner", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit the scanner manually
+                break
+
+        cap.release()
+        cv2.destroyAllWindows()
 
     def clock_action(self, action, staff_code):
         conn = sqlite3.connect(databasePath)
@@ -467,6 +521,27 @@ class StaffClockInOutSystem(QMainWindow):
             QMessageBox.critical(self, 'Error', 'Invalid action')
         self.clock_in_button.setText("Enter Building")
         self.clock_out_button.setText("Exit Building")
+
+    def process_clock_action(self, user_id, action="in"):
+        """Process clock-in or clock-out based on user ID or staff code."""
+        conn = sqlite3.connect(databasePath)
+        c = conn.cursor()
+
+        # Check if the staff exists
+        c.execute('SELECT * FROM staff WHERE code = ?', (user_id,))
+        staff = c.fetchone()
+        if not staff:
+            conn.close()
+            QMessageBox.critical(self, "Error", "Invalid user ID or staff code.")
+            return
+
+        if action == "in":
+            self.clock_action("in", user_id)
+        elif action == "out":
+            self.clock_action("out", user_id)
+        else:
+            QMessageBox.warning(self, "Action Error", f"Unknown action: {action}")
+        conn.close()
 
     def on_staff_code_change(self):
         staff_code = self.staff_code_entry.text()
@@ -1234,6 +1309,7 @@ class StaffClockInOutSystem(QMainWindow):
                     self, 'Success', f'Staff member {staff_name} with code {staff_code}.'
                 )
                 logging.info(f"Staff member {staff_name} added with code {staff_code}.")
+                self.generate_qr_code(staff_code)
                 break
             except sqlite3.Error as e:
                 QMessageBox.critical(self, 'Database Error', f'An error occurred: {e}')
