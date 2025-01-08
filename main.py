@@ -190,6 +190,9 @@ class StaffClockInOutSystem(QMainWindow):
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
         logging.info("UI setup complete.")
 
+        self.scanner_active = False  # Track if the scanner is active
+        self.cap = None  # Store camera object
+
 
         self.isWindowed = False
         # Paths
@@ -439,7 +442,7 @@ class StaffClockInOutSystem(QMainWindow):
                 staff_code = data
 
                 # Automatically clock in/out after scanning
-                self.process_clock_action(staff_code)
+                self.staff_code_entry.setText(staff_code)
 
                 cv2.putText(frame, f"Code: {staff_code}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                 cv2.imshow("QR Scanner", frame)
