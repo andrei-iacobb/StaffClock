@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem, QCompleter
 )
 from PyQt6.QtCore import Qt, QTimer, QTime, QEvent
-from PyQt6.QtGui import QFont, QPixmap
+from PyQt6.QtGui import QFont, QPixmap, QImage
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
 from reportlab.lib.pagesizes import letter, A4
@@ -48,7 +48,7 @@ logoPath = ""
 
 
 def get_os_specific_path():
-    global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logoPath
+    global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logoPath, qr_code_folder_path
 
     # Get the base directory where main.py resides
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -57,18 +57,10 @@ def get_os_specific_path():
         raise FileNotFoundError("Base directory does not exist.")
 
     # OS-dependent paths
-    if platform.system() == "Darwin":
-        # macOS paths
-        program_data_path = os.path.join(base_path, "ProgramData")
-        tempPath = os.path.join(base_path, "TempData")
-        permanentPath = os.path.join(base_path, "Timesheets")
-    elif platform.system() == "Windows":
-        # Windows paths
-        program_data_path = os.path.join(base_path, "ProgramData")
-        tempPath = os.path.join(base_path, "TempData")
-        permanentPath = os.path.join(base_path, "Timesheets")
-    else:
-        raise OSError("Unsupported Operating System")
+    program_data_path = os.path.join(base_path, "ProgramData")
+    tempPath = os.path.join(base_path, "TempData")
+    permanentPath = os.path.join(base_path, "Timesheets")
+    qr_code_folder_path = os.path.join(base_path, "QR_Codes")  # Path for QR codes
 
     backup_folder = os.path.join(base_path, "Backups")
 
@@ -84,12 +76,40 @@ def get_os_specific_path():
     logoPath = os.path.join(program_data_path, "Logo.png")
     databasePath = os.path.join(program_data_path, "staff_hours.db")
 
-
     configure_logging()
 
-    # Ensure files exist or create defaults
+    # Ensure files and folders exist or restore them from backups
     check_and_restore_file(databasePath, backup_folder, generate_default_database)
     check_and_restore_file(settingsFilePath, backup_folder, generate_default_settings)
+    check_and_restore_folder(qr_code_folder_path, backup_folder)
+
+def check_and_restore_folder(folder_path, backup_folder):
+    """Ensure a folder exists or restore it from backup if available."""
+    if os.path.exists(folder_path):
+        logging.info(f"Folder found: {folder_path}")
+        return
+
+    # Search for zipped backups containing the folder
+    zip_files = [
+        os.path.join(backup_folder, f) for f in os.listdir(backup_folder) if f.endswith('.zip')
+    ]
+    zip_files.sort(key=os.path.getmtime, reverse=True)  # Sort by modification time (newest first)
+
+    for zip_file in zip_files:
+        try:
+            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                folder_name = os.path.basename(folder_path)
+                folder_files = [f for f in zip_ref.namelist() if f.startswith(f"{folder_name}/")]
+                if folder_files:
+                    zip_ref.extractall(os.path.dirname(folder_path))
+                    logging.info(f"Restored folder '{folder_path}' from backup '{zip_file}'.")
+                    return
+        except zipfile.BadZipFile:
+            logging.error(f"Corrupted zip file: {zip_file}")
+
+    # If no backup exists, create the folder
+    logging.warning(f"No backup found for folder '{folder_path}'. Creating new folder.")
+    os.makedirs(folder_path, exist_ok=True)
 
 def check_and_restore_file(primary_path, backup_folder, generate_default=None):
     if os.path.exists(primary_path):
@@ -408,8 +428,9 @@ class StaffClockInOutSystem(QMainWindow):
         footer.setStyleSheet("color: gray; margin: 0; padding: 0;")  # Minimal styling
         return footer
 
+
     def generate_qr_code(self, staff_code):
-        """Generate a QR code for the given staff code and save it."""
+        """Generate a QR code for the given staff code and save it, then show a dialog."""
         qr_folder = os.path.join(os.path.dirname(__file__), "QR_Codes")
         os.makedirs(qr_folder, exist_ok=True)
         qr_code_file = os.path.join(qr_folder, f"{staff_code}.png")
@@ -423,37 +444,107 @@ class StaffClockInOutSystem(QMainWindow):
 
         logging.info(f"Generated QR code for staff code {staff_code} at {qr_code_file}")
 
+        # Show QR Code dialog
+        self.show_qr_code_dialog(qr_code_file)
+
+    def show_qr_code_dialog(self, qr_code_file):
+        """Show a dialog with the QR code image."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("QR Code")
+        dialog.setFixedSize(400, 400)
+
+        layout = QVBoxLayout(dialog)
+
+        qr_label = QLabel(dialog)
+        pixmap = QPixmap(qr_code_file)
+        qr_label.setPixmap(pixmap)
+        qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        close_button = QPushButton("Close", dialog)
+        close_button.clicked.connect(dialog.close)
+
+        layout.addWidget(qr_label)
+        layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        dialog.setLayout(layout)
+        dialog.exec()
+
     def scan_qr_code(self):
-        """Open the camera to scan QR codes using OpenCV."""
-        cap = cv2.VideoCapture(0)  # 0 is usually the default camera
-        detector = cv2.QRCodeDetector()  # OpenCV QR Code Detector
+        """Start/stop QR code scanning based on the button state."""
+        if self.scanner_active:
+            self.stop_scanner()  # Stop scanning if already active
+            self.qr_scan_button.setText("Scan QR Code")
+            return
+
+        self.qr_scan_button.setText("Stop Scan")
+        self.scanner_active = True
+        self.cap = cv2.VideoCapture(0)  # Open the default camera
+
+        detector = cv2.QRCodeDetector()
 
         logging.info("Camera started for QR scanning...")
 
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+        # Create or show the QLabel for the camera preview
+        if not hasattr(self, "camera_preview"):
+            self.camera_preview = QLabel(self)
+            self.camera_preview.setFixedSize(300, 300)  # Set preview box size
+            self.camera_preview.setStyleSheet("border: 2px solid white; background-color: black;")
+            self.camera_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.central_widget.layout().addWidget(self.camera_preview)
 
-            # Detect and decode QR Code
-            data, bbox, _ = detector.detectAndDecode(frame)
-            if data:
-                logging.info(f"QR Code detected: {data}")
-                staff_code = data
+        self.camera_preview.setScaledContents(False)  # Preserve aspect ratio
+        self.camera_preview.show()  # Show the preview box
 
-                # Automatically clock in/out after scanning
-                self.staff_code_entry.setText(staff_code)
+        def run_scanner():
+            while self.cap.isOpened() and self.scanner_active:
+                ret, frame = self.cap.read()
+                if not ret:
+                    break
 
-                cv2.putText(frame, f"Code: {staff_code}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                cv2.imshow("QR Scanner", frame)
-                break
+                # Get QLabel's size and calculate the resized frame dimensions
+                label_width = self.camera_preview.width()
+                label_height = self.camera_preview.height()
+                frame_height, frame_width = frame.shape[:2]
+                aspect_ratio = frame_width / frame_height
 
-            cv2.imshow("QR Scanner", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit the scanner manually
-                break
+                # Calculate new dimensions while preserving aspect ratio
+                if label_width / label_height > aspect_ratio:
+                    new_height = label_height
+                    new_width = int(aspect_ratio * label_height)
+                else:
+                    new_width = label_width
+                    new_height = int(label_width / aspect_ratio)
 
-        cap.release()
-        cv2.destroyAllWindows()
+                resized_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_AREA)
+
+                # Convert to RGB and display the frame
+                rgb_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
+                q_img = QImage(rgb_frame.data, new_width, new_height, QImage.Format.Format_RGB888)
+                pixmap = QPixmap.fromImage(q_img)
+
+                self.camera_preview.setPixmap(pixmap)
+
+                # Detect and decode QR Code
+                data, _, _ = detector.detectAndDecode(frame)
+                if data:
+                    logging.info(f"QR Code detected: {data}")
+                    self.staff_code_entry.setText(data)  # Automatically fill the staff code entry
+                    break
+
+            self.stop_scanner()
+
+        Thread(target=run_scanner, daemon=True).start()
+
+    def stop_scanner(self):
+        """Stop the QR scanner and hide the camera preview."""
+        if self.cap:
+            self.cap.release()
+        self.scanner_active = False
+        if hasattr(self, "camera_preview"):
+            self.camera_preview.clear()  # Clear the video feed
+            self.camera_preview.hide()  # Hide the QLabel
+        self.qr_scan_button.setText("Scan QR Code")
+        logging.info("Camera stopped for QR scanning.")
 
     def clock_action(self, action, staff_code):
         conn = sqlite3.connect(databasePath)

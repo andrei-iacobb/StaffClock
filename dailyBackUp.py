@@ -30,7 +30,7 @@ class DailyBackUp(QThread):
         while self.running:
             today = datetime.now()
             backup_time = today.strftime("%H:%M:%S")
-            if backup_time == "21:42:00":  # Trigger backup at midnight
+            if backup_time == "18:08:00":  # Trigger backup at midnight
                 self.perform_backup()
                 self.sleep(1)  # Avoid triggering multiple times during the same second
             else:
@@ -53,6 +53,15 @@ class DailyBackUp(QThread):
                 # Add settings
                 if os.path.exists(self.settings_path):
                     backup_zip.write(self.settings_path, os.path.basename(self.settings_path))
+
+                # Add QR Codes folder if it exists
+                qr_code_folder = os.path.join(os.path.dirname(self.database_path), "QR_Codes")
+                if os.path.exists(qr_code_folder):
+                    for root, _, files in os.walk(qr_code_folder):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            arcname = os.path.relpath(file_path, os.path.dirname(qr_code_folder))
+                            backup_zip.write(file_path, os.path.join("QR_Codes", arcname))
 
             self.daily_back_up.emit(f"Backup completed: {backup_path}")
             print(f"Backup completed: {backup_path}")  # Debugging output
