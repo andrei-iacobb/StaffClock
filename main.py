@@ -228,6 +228,7 @@ class StaffClockInOutSystem(QMainWindow):
             settings_path=settingsFilePath,
             logo_path=logoPath,
         )
+
         self.daily_backup_thread.daily_back_up.connect(self.handle_backup_complete)
         self.daily_backup_thread.start()
 

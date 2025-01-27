@@ -1,9 +1,8 @@
 import logging
 
 from PyQt6.QtCore import QThread, pyqtSignal
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
-import shutil
 import zipfile
 
 class DailyBackUp(QThread):
@@ -15,7 +14,7 @@ class DailyBackUp(QThread):
         self.database_path = database_path
         self.log_file_path = log_file_path
         self.settings_path = settings_path
-        self.logo_path = logo_path
+        self.logo_path = logo_path  # Add logo_path here
         self.running = True
 
         # Ensure the backup directory exists or create it
@@ -30,7 +29,7 @@ class DailyBackUp(QThread):
         while self.running:
             today = datetime.now()
             backup_time = today.strftime("%H:%M:%S")
-            if backup_time == "18:08:00":  # Trigger backup at midnight
+            if backup_time == "13:11:00":  # Trigger backup at 12:59
                 self.perform_backup()
                 self.sleep(1)  # Avoid triggering multiple times during the same second
             else:
@@ -44,30 +43,47 @@ class DailyBackUp(QThread):
 
             with zipfile.ZipFile(backup_path, 'w') as backup_zip:
                 # Add database
-                backup_zip.write(self.database_path, os.path.basename(self.database_path))
+                self.add_file_to_zip(backup_zip, self.database_path)
 
                 # Add log file
-                if os.path.exists(self.log_file_path):
-                    backup_zip.write(self.log_file_path, os.path.basename(self.log_file_path))
+                self.add_file_to_zip(backup_zip, self.log_file_path)
 
-                # Add settings
-                if os.path.exists(self.settings_path):
-                    backup_zip.write(self.settings_path, os.path.basename(self.settings_path))
+                # Add settings file
+                self.add_file_to_zip(backup_zip, self.settings_path)
 
-                # Add QR Codes folder if it exists
-                qr_code_folder = os.path.join(os.path.dirname(self.database_path), "QR_Codes")
-                if os.path.exists(qr_code_folder):
-                    for root, _, files in os.walk(qr_code_folder):
-                        for file in files:
-                            file_path = os.path.join(root, file)
-                            arcname = os.path.relpath(file_path, os.path.dirname(qr_code_folder))
-                            backup_zip.write(file_path, os.path.join("QR_Codes", arcname))
+                # Add logo file
+                self.add_file_to_zip(backup_zip, self.logo_path)
+
+                # Add ProgramData folder
+                self.add_folder_to_zip(backup_zip, "ProgramData")
+
+                # Add QR_Codes folder
+                self.add_folder_to_zip(backup_zip, "QR_Codes")
+
+                # Add Timesheets folder
+                self.add_folder_to_zip(backup_zip, "Timesheets")
 
             self.daily_back_up.emit(f"Backup completed: {backup_path}")
-            print(f"Backup completed: {backup_path}")  # Debugging output
+            print(f"Backup completed: {backup_path}")
         except Exception as e:
             self.daily_back_up.emit(f"Backup failed: {str(e)}")
-            print(f"Backup failed: {e}")  # Debugging output
+            print(f"Backup failed: {e}")
+
+    def add_file_to_zip(self, backup_zip, file_path):
+        """Helper method to add a file to the zip if it exists."""
+        if os.path.exists(file_path):
+            backup_zip.write(file_path, os.path.basename(file_path))
+
+    def add_folder_to_zip(self, backup_zip, folder_name):
+        """Helper method to add all contents of a folder to the zip."""
+        folder_path = os.path.join(os.path.dirname(self.database_path), folder_name)
+        if os.path.exists(folder_path):
+            for root, _, files in os.walk(folder_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    # Preserve folder structure within the zip
+                    arcname = os.path.relpath(file_path, os.path.dirname(self.database_path))
+                    backup_zip.write(file_path, arcname)
 
     def stop(self):
         self.running = False

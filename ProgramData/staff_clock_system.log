@@ -1,0 +1,9 @@
+2025-01-27 13:12:34,790 - INFO - Logging initialized.
+2025-01-27 13:12:34,790 - WARNING - No backup found for /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db. Generating default.
+2025-01-27 13:12:34,791 - INFO - Default database created at /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-01-27 13:12:34,791 - WARNING - No backup found for /Users/andreiiacob/StaffClock/ProgramData/settings.json. Generating default.
+2025-01-27 13:12:34,791 - INFO - Default settings file created at /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-01-27 13:12:34,791 - WARNING - No backup found for folder '/Users/andreiiacob/StaffClock/QR_Codes'. Creating new folder.
+2025-01-27 13:12:34,905 - INFO - UI setup complete.
+2025-01-27 13:12:34,947 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146'}
+2025-01-27 13:12:34,947 - INFO - Initializing TimesheetCheckerThread...
