@@ -265,7 +265,7 @@ class StaffClockInOutSystem(QMainWindow):
 
     def handle_backup_complete(self, message):
         logging.info(message)
-        QMessageBox.information(self, "Backup", message)
+        self.msg("Daily backup completed.", "info", "Backup")
 
     def update_time(self):
         """Update the clock label with the current time."""
@@ -556,7 +556,7 @@ class StaffClockInOutSystem(QMainWindow):
         staff = c.fetchone()
         if not staff:
             conn.close()
-            QMessageBox.critical(self, 'Error', 'Invalid staff code')
+            self.msg("Invalid user ID or staff code.", "warning", "Error")
             return
 
         if action == 'in':
@@ -569,10 +569,10 @@ class StaffClockInOutSystem(QMainWindow):
                     # Start Break
                     self.break_start_time = datetime.now()
                     self.on_break = True
-                    QMessageBox.information(self, 'Break Started', 'Your break has started.')
+                    self.msg("Break started.", "info", "Success")
                     logging.info(f"Break started for staff code {staff_code} at {self.break_start_time}")
                 else:
-                    QMessageBox.warning(self, 'Error', 'You are already on a break.')
+                    self.msg("You are already on break.", "warning", "Warning")
             else:
                 # Regular Clock-In
                 clock_in_time = datetime.now().isoformat()
@@ -580,7 +580,7 @@ class StaffClockInOutSystem(QMainWindow):
                           (staff_code, clock_in_time))
                 conn.commit()
                 time_in = datetime.fromisoformat(clock_in_time).strftime('%H:%M')
-                QMessageBox.information(self, 'Success', f'Clock-in recorded successfully at {time_in}')
+                self.msg(f'Clock-in recorded successfully at {time_in}', 'info', 'Success')
                 logging.info(f"Clock-in successful for staff code {staff_code} at {time_in}")
             self.staff_code_entry.clear()
 
@@ -595,7 +595,7 @@ class StaffClockInOutSystem(QMainWindow):
                 conn.commit()
                 self.on_break = False
                 self.break_start_time = None
-                QMessageBox.information(self, 'Break Ended', f'Your break lasted {break_duration:.2f} minutes.')
+                self.msg(f"Break ended. Duration: {break_duration:.2f} minutes.", "info", "Success")
                 logging.info(f"Break ended for staff code {staff_code}. Duration: {break_duration:.2f} minutes.")
             else:
                 # Regular Clock-Out
@@ -604,20 +604,35 @@ class StaffClockInOutSystem(QMainWindow):
                 clock_record = c.fetchone()
                 if not clock_record:
                     conn.close()
-                    QMessageBox.critical(self, 'Error', 'No clock-in record found')
+                    self.msg("You are not clocked in.", "warning", "Error")
                     return
                 c.execute('UPDATE clock_records SET clock_out_time = ? WHERE id = ?', (clock_out_time, clock_record[0]))
                 conn.commit()
                 time_out = datetime.fromisoformat(clock_out_time).strftime('%H:%M')
-                QMessageBox.information(self, 'Success', f'Clock-out recorded successfully at {time_out}')
+                self.msg(f'Clock-out recorded successfully at {time_out}', 'info', 'Success')
                 logging.info(f"Clock-out successful for staff code {staff_code} at {time_out}")
             self.staff_code_entry.clear()
 
         else:
             conn.close()
-            QMessageBox.critical(self, 'Error', 'Invalid action')
+            self.msg(f'Unknown action: {action}', 'warning', 'Error')
+            logging.info(f"Unknown action: {action}")
         self.clock_in_button.setText("Enter Building")
         self.clock_out_button.setText("Exit Building")
+
+    def msg(self, message, state, title):
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle(title)
+        msgBox.setText(message)
+        if state == "info":
+            msgBox.setIcon(QMessageBox.Icon.Information)
+        elif state == "warning":
+            msgBox.setIcon(QMessageBox.Icon.Warning)
+        elif state == "critical":
+            msgBox.setIcon(QMessageBox.Icon.Critical)
+        closeTimer =  QTimer(msgBox, singleShot = True, interval = 3000, timeout = msgBox.close)
+        closeTimer.start()
+        msgBox.exec()
 
     def process_clock_action(self, user_id, action="in"):
         """Process clock-in or clock-out based on user ID or staff code."""
@@ -629,7 +644,7 @@ class StaffClockInOutSystem(QMainWindow):
         staff = c.fetchone()
         if not staff:
             conn.close()
-            QMessageBox.critical(self, "Error", "Invalid user ID or staff code.")
+            self.msg("Invalid user ID or staff code.", "warning", "Error")
             return
 
         if action == "in":
@@ -637,7 +652,7 @@ class StaffClockInOutSystem(QMainWindow):
         elif action == "out":
             self.clock_action("out", user_id)
         else:
-            QMessageBox.warning(self, "Action Error", f"Unknown action: {action}")
+            self.msg(f"Unknown action: {action}", "warning", "Error")
         conn.close()
 
     def on_staff_code_change(self):
@@ -799,9 +814,9 @@ class StaffClockInOutSystem(QMainWindow):
 
             self.save_settings()
 
-            QMessageBox.information(self, "Success", "Settings saved successfully.")
+            self.msg("Settings saved successfully.", "info", "Success")
         except ValueError as e:
-            QMessageBox.critical(self, "Error", f"Invalid input: {e}")
+            self.msg(f"Invalid settings: {e}", "warning", "Error")
 
     def open_admin_tab(self):
         logging.info("Opening admin tab")
@@ -914,7 +929,7 @@ class StaffClockInOutSystem(QMainWindow):
     def add_comment(self):
         staff_name = self.name_entry.text().strip()
         if not staff_name:
-            QMessageBox.warning(self, "Warning", "Please enter a Name")
+            self.msg("Please enter a staff name.", "warning", "Error")
             logging.error("No staff name entered.")
             return
 
@@ -925,7 +940,7 @@ class StaffClockInOutSystem(QMainWindow):
         staff = c.fetchone()
         if not staff:
             conn.close()
-            QMessageBox.warning(self, "Warning", "No staff found")
+            self.msg("Staff not found.", "warning", "Error")
             logging.error(f"No staff found for name: {staff_name}")
             return
         staff_code = staff[0]
@@ -980,7 +995,7 @@ class StaffClockInOutSystem(QMainWindow):
 
     def save_staff_comment(self, staff_name, comment, dialog):
         if not comment.strip():
-            QMessageBox.warning(self, "Warning", "Comment cannot be empty.")
+            self.msg("Please enter a comment.", "warning", "Error")
             return
 
         try:
@@ -989,11 +1004,11 @@ class StaffClockInOutSystem(QMainWindow):
             c.execute("UPDATE staff SET notes = ? WHERE name = ?", (comment, staff_name))
             conn.commit()
             conn.close()
-            QMessageBox.information(self, "Success", "Comment added to staff record.")
+            self.msg("Comment saved successfully.", "info", "Success")
             logging.info(f"Added comment to staff {staff_name}: {comment}")
             dialog.close()
         except sqlite3.Error as e:
-            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            self.msg(f"Database error: {e}", "warning", "Error")
             logging.error(f"Database error: {e}")
 
     def add_clock_record_comment(self, staff_code, parent_menu):
@@ -1003,7 +1018,7 @@ class StaffClockInOutSystem(QMainWindow):
         # Fetch clock records
         records = self.fetch_clock_records(staff_code)
         if not records:
-            QMessageBox.information(self, "Info", "No clock records found for this staff member.")
+            self.msg("No records found for this staff member.", "warning", "Error")
             return
 
         # Show selection dialog
@@ -1048,7 +1063,7 @@ class StaffClockInOutSystem(QMainWindow):
             return records
         except sqlite3.Error as e:
             logging.error(f"Database error while fetching records: {e}")
-            QMessageBox.critical(self, "Error", f"Unable to fetch records: {e}")
+            self.msg("Database error occurred.", "warning", "Error")
             return []
 
     def update_pin_label(self):
@@ -1078,7 +1093,7 @@ class StaffClockInOutSystem(QMainWindow):
         logging.debug("Starting open_records_tab function")
         staff_name = self.name_entry.text().strip()
         if not staff_name:
-            QMessageBox.critical(self, "Error", "Please enter a valid staff name.")
+            self.msg("Please enter a valid staff name.", "warning", "Error")
             logging.error(f"Error: Invalid staff name '{staff_name}'")
             return
 
@@ -1089,7 +1104,7 @@ class StaffClockInOutSystem(QMainWindow):
             staff = cursor.fetchone()
 
             if not staff:
-                QMessageBox.critical(self, "Error", "Staff member not found.")
+                self.msg("Staff member not found.", "warning", "Error")
                 logging.error(f"Staff member '{staff_name}' not found.")
                 return
 
@@ -1100,12 +1115,12 @@ class StaffClockInOutSystem(QMainWindow):
             conn.close()
 
             if not records:
-                QMessageBox.information(self, "Info", "No records found for this staff member.")
+                self.msg("No records found for this staff member.", "info", "Info")
                 logging.warning(f"No records found for staff '{staff_name}'.")
                 return
 
         except sqlite3.Error as e:
-            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            self.msg(f"Database error: {e}", "warning", "Error")
             logging.error(f"Database error occurred: {e}")
             return
 
@@ -1188,7 +1203,7 @@ class StaffClockInOutSystem(QMainWindow):
         logging.debug("Starting open_records_tab function")
         staff_name = self.name_entry.text().strip()
         if not staff_name:
-            QMessageBox.critical(self, "Error", "Please enter a valid staff name.")
+            self.msg("Please enter a valid staff name.", "warning", "Error")
             logging.error(f"Error: Invalid staff name '{staff_name}'")
             return
 
@@ -1199,7 +1214,7 @@ class StaffClockInOutSystem(QMainWindow):
             staff = cursor.fetchone()
 
             if not staff:
-                QMessageBox.critical(self, "Error", "Staff member not found.")
+                self.msg("Staff member not found.", "warning", "Error")
                 logging.error(f"Staff member '{staff_name}' not found.")
                 return
 
@@ -1210,12 +1225,12 @@ class StaffClockInOutSystem(QMainWindow):
             conn.close()
 
             if not records:
-                QMessageBox.information(self, "Info", "No records found for this staff member.")
+                self.msg("No records found for this staff member.", "info", "Info")
                 logging.warning(f"No records found for staff '{staff_name}'.")
                 return
 
         except sqlite3.Error as e:
-            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            self.msg(f"Database error: {e}", "warning", "Error")
             logging.error(f"Database error occurred: {e}")
             return
 
@@ -1286,7 +1301,7 @@ class StaffClockInOutSystem(QMainWindow):
         conn.close()
 
         if not record:
-            QMessageBox.warning(self, "Warning", "Record not found.")
+            self.msg("Record not found.", "warning", "Error")
             return
 
         # Open a dialog to edit the record
@@ -1334,18 +1349,18 @@ class StaffClockInOutSystem(QMainWindow):
             conn.commit()
             conn.close()
 
-            QMessageBox.information(self, "Success", "Record updated successfully.")
+            self.msg("Record updated successfully.", "info", "Success")
             logging.info(
                 f"Updated clock record ID {record_id}: Clock In: {clock_in}, Clock Out: {clock_out}, Notes: {notes}")
             dialog.close()
         except sqlite3.Error as e:
-            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            self.msg(f"Database error occurred: {e}", "warning", "Error")
             logging.error(f"Database error occurred: {e}")
 
     def save_clock_reocrd_comment(self, record_id, comment, dialog):
         """Save the comment to the database."""
         if not comment.strip():
-            QMessageBox.warning(self, "Warning", "Comment cannot be empty.")
+            self.msg("Please enter a comment.", "warning", "Error")
             return
 
         try:
@@ -1354,11 +1369,11 @@ class StaffClockInOutSystem(QMainWindow):
             cursor.execute("UPDATE clock_records SET notes = ? WHERE id = ?", (comment.strip(), record_id))
             conn.commit()
             conn.close()
-            QMessageBox.information(self, "Success", "Comment added to clock record.")
+            self.msg("Comment saved successfully.", "info", "Success")
             dialog.close()
             logging.info(f"Added comment to record ID {record_id}: {comment}")
         except sqlite3.Error as e:
-            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            self.msg(f"Database error occurred: {e}", "warning", "Error")
             logging.error(f"Database error: {e}")
 
     def toggle_window_mode(self):
@@ -1386,7 +1401,7 @@ class StaffClockInOutSystem(QMainWindow):
         staff_name = self.name_entry.text().strip()
 
         if not staff_name:
-            QMessageBox.warning(self, "Warning", "Please enter a valid name.")
+            self.msg("Please enter a valid staff name.", "warning", "Error")
             logging.error("Missing staff name.")
             return
 
@@ -1402,26 +1417,24 @@ class StaffClockInOutSystem(QMainWindow):
             try:
                 c.execute('INSERT INTO staff (name, code) VALUES (?, ?)', (staff_name, staff_code))
                 conn.commit()
-                QMessageBox.information(
-                    self, 'Success', f'Staff member {staff_name} with code {staff_code}.'
-                )
+                self.msg(f"Staff member {staff_name} added with code {staff_code}.", "info", "Success")
                 logging.info(f"Staff member {staff_name} added with code {staff_code}.")
                 self.generate_qr_code(staff_code)
                 break
             except sqlite3.Error as e:
-                QMessageBox.critical(self, 'Database Error', f'An error occurred: {e}')
+                self.msg(f"Database error occurred: {e}", "warning", "Error")
                 logging.error(f"Database error occurred: {e}")
             finally:
                 conn.close()
             retries += 1
         else:
-            QMessageBox.warning(self, "Warning", "Could not add staff after multiple retries.")
+            self.msg("Failed to add staff member. Please try again.", "warning", "Error")
             logging.error(f"Failed to add staff member {staff_name}.")
 
     def remove_staff(self):
         staff_name = self.name_entry.text().strip()
         if not staff_name:
-            QMessageBox.critical(self, "Error", "Please enter a valid staff name.")
+            self.msg("Please enter a valid staff name.", "warning", "Error")
             logging.error("Staff name is empty.")
             return
 
@@ -1433,7 +1446,7 @@ class StaffClockInOutSystem(QMainWindow):
             c.execute('SELECT code FROM staff WHERE name = ?', (staff_name,))
             staff = c.fetchone()
             if not staff:
-                QMessageBox.critical(self, "Error", "Staff member not found.")
+                self.msg("Staff member not found.", "warning", "Error")
                 logging.error(f"Staff member '{staff_name}' not found.")
                 return
             staff_code = staff[0]
@@ -1466,11 +1479,11 @@ class StaffClockInOutSystem(QMainWindow):
             c.execute('DELETE FROM staff WHERE code = ?', (staff_code,))
             conn.commit()
 
-            QMessageBox.information(self, "Success", f"Staff member {staff_name} archived and deleted successfully.")
+            self.msg(f"Staff member {staff_name} removed successfully.", "info", "Success")
             logging.info(f"Archived and removed staff member: {staff_name}")
 
         except sqlite3.Error as e:
-            QMessageBox.critical(self, "Error", f"Database error: {e}")
+            self.msg(f"Database error occurred: {e}", "warning", "Error")
             logging.error(f"Database error occurred: {e}")
         finally:
             conn.close()
@@ -1543,7 +1556,7 @@ class StaffClockInOutSystem(QMainWindow):
         logging.debug("Starting open_records_tab function")
         staff_name = self.name_entry.text().strip()
         if not staff_name:
-            QMessageBox.critical(self, "Error", "Please enter a valid staff name.")
+            self.msg("Please enter a valid staff name.", "warning", "Error")
             logging.error(f"Error: Invalid staff name '{staff_name}'")
             return
 
@@ -1554,7 +1567,7 @@ class StaffClockInOutSystem(QMainWindow):
             staff = cursor.fetchone()
 
             if not staff:
-                QMessageBox.critical(self, "Error", "Staff member not found.")
+                self.msg("Staff member not found.", "warning", "Error")
                 logging.error(f"Staff member '{staff_name}' not found.")
                 return
 
@@ -1567,7 +1580,7 @@ class StaffClockInOutSystem(QMainWindow):
             conn.close()
 
         if not records:
-            QMessageBox.information(self, "Info", "No records found for this staff member.")
+            self.msg("No records found for this staff member.", "info", "Info")
             logging.warning(f"No records found for staff '{staff_name}'.")
             return
 
@@ -1580,8 +1593,7 @@ class StaffClockInOutSystem(QMainWindow):
             self.open_pdf(file_path)
             self.delete_pdf_after_delay(file_path, delay=10)  # Delete after 60 seconds
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
-
+            self.msg(f"An error occurred: {e}", "warning", "Error")
     def get_printer_ip(self):
         """
         Display a dialog for the user to enter the printer's IP address.
@@ -1617,7 +1629,7 @@ class StaffClockInOutSystem(QMainWindow):
         Handle the entered IP address and close the dialog.
         """
         if not ip_address.strip():
-            QMessageBox.warning(self, "Invalid Input", "Please enter a valid IP address.")
+            self.msg("Please enter a valid IP address.", "warning", "Error")
             return
 
         # You can store or use the IP address here
@@ -1630,7 +1642,7 @@ class StaffClockInOutSystem(QMainWindow):
         """Generate a temporary PDF for the selected staff and send it to the printer."""
         staff_name = self.name_entry.text().strip()
         if not staff_name:
-            QMessageBox.warning(self, "Warning", "Please enter a valid staff name.")
+            self.msg("Please enter a valid staff name.", "warning", "Error")
             logging.error(f"Error: Invalid staff name '{staff_name}'")
             return
 
@@ -1642,7 +1654,7 @@ class StaffClockInOutSystem(QMainWindow):
             staff = cursor.fetchone()
 
             if not staff:
-                QMessageBox.critical(self, "Error", "Staff member not found.")
+                self.msg("Staff member not found.", "warning", "Error")
                 logging.error(f"Staff member '{staff_name}' not found.")
                 return
 
@@ -1655,7 +1667,7 @@ class StaffClockInOutSystem(QMainWindow):
             conn.close()
 
         if not records:
-            QMessageBox.information(self, "Info", "No records found for this staff member.")
+            self.msg("No records found for this staff member.", "info", "Info")
             logging.warning(f"No records found for staff '{staff_name}'.")
             return
 
@@ -1672,7 +1684,7 @@ class StaffClockInOutSystem(QMainWindow):
             # Schedule the deletion of the temporary file
             self.delete_pdf_after_delay(file_path, delay=10)
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+            self.msg(f"An error occurred: {e}", "warning", "Error")
             logging.error(f"Failed to prepare print for {staff_name}: {e}")
 
     def print_via_jetdirect(self, file_path):
@@ -1726,7 +1738,7 @@ class StaffClockInOutSystem(QMainWindow):
         conn.close()
 
         if not records:
-            QMessageBox.information(self, "Info", "No records found for the selected period.")
+            self.msg("No records found for the selected period.", "info", "Info")
             return
 
         # Organize records by staff
@@ -1748,7 +1760,7 @@ class StaffClockInOutSystem(QMainWindow):
         """
         staff_name = self.name_entry.text().strip()
         if not staff_name:
-            QMessageBox.critical(self, "Error", "Please enter a valid staff name.")
+            self.msg("Please enter a valid staff name.", "warning", "Error")
             logging.error("No staff name provided for timesheet generation.")
             return
 
@@ -1760,7 +1772,7 @@ class StaffClockInOutSystem(QMainWindow):
         conn.close()
 
         if not staff:
-            QMessageBox.critical(self, "Error", "Staff member not found.")
+            self.msg("Staff member not found.", "warning", "Error")
             logging.error(f"Staff member '{staff_name}' not found.")
             return
 
@@ -1792,13 +1804,13 @@ class StaffClockInOutSystem(QMainWindow):
         conn.close()
 
         if not records:
-            QMessageBox.information(self, "Info", f"No records found for {staff_name} in the selected period.")
+            self.msg(f"No records found for {staff_name} between {start_date} and {end_date}.", "info", "Info")
             logging.info(f"No records found for {staff_name} between {start_date} and {end_date}.")
             return
 
         # Generate the timesheet
         self.generate_timesheet(staff_name, "Unknown", start_date, end_date, records)
-        QMessageBox.information(self, "Success", f"Timesheet generated for {staff_name}.")
+        self.msg(f"Timesheet generated for {staff_name}.", "info", "Success")
         logging.info(f"Timesheet generated for {staff_name}.")
 
 
