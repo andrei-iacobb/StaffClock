@@ -67,3 +67,24 @@
 2025-02-04 14:43:41,451 - INFO - Break started for staff code 1774 at 2025-02-04 14:43:38.502611
 2025-02-04 14:43:46,642 - INFO - Break ended for staff code 1774. Duration: 0.10 minutes.
 2025-02-04 14:43:53,885 - INFO - Clock-out successful for staff code 1774 at 14:43
+2025-02-04 18:18:15,495 - INFO - Logging initialized.
+2025-02-04 18:18:15,496 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-04 18:18:15,496 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-04 18:18:15,496 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-04 18:18:15,625 - INFO - UI setup complete.
+2025-02-04 18:18:15,680 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146'}
+2025-02-04 18:18:15,680 - INFO - Initializing TimesheetCheckerThread...
+2025-02-04 18:18:22,240 - INFO - Clock-in successful for staff code 1774 at 18:18
+2025-02-04 18:18:30,243 - INFO - Clock-out successful for staff code 1774 at 18:18
+2025-02-04 18:18:41,125 - INFO - Logging initialized.
+2025-02-04 18:18:41,125 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-04 18:18:41,125 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-04 18:18:41,125 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-04 18:18:41,247 - INFO - UI setup complete.
+2025-02-04 18:18:41,286 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146'}
+2025-02-04 18:18:41,286 - INFO - Initializing TimesheetCheckerThread...
+2025-02-04 18:18:43,719 - INFO - Opening admin tab
+2025-02-04 18:19:48,944 - INFO - Opening admin tab
+2025-02-04 18:20:35,488 - INFO - PDF created successfully at '/Users/andreiiacob/StaffClock/TempData/Jo_temp.pdf'.
+2025-02-04 18:20:35,503 - INFO - PDF sent to printer successfully
+2025-02-04 18:20:45,508 - INFO - Temporary PDF file '/Users/andreiiacob/StaffClock/TempData/Jo_temp.pdf' deleted after delay.

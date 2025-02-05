@@ -198,7 +198,8 @@ def configure_logging():
         level=logging.DEBUG,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
-    logging.info("Logging initialized.")
+    date = datetime.date.now()
+    logging.info(f"Logging initialized for: {date}")
 
 class StaffClockInOutSystem(QMainWindow):
     def __init__(self):
