@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem, QCompleter
 )
 from PyQt6.QtCore import Qt, QTimer, QTime, QEvent
-from PyQt6.QtGui import QFont, QPixmap, QImage
+from PyQt6.QtGui import QFont, QPixmap, QImage, QScreen
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
 from reportlab.lib.pagesizes import letter, A4
@@ -46,31 +46,27 @@ settingsFilePath = ""
 log_file = ""
 logoPath = ""
 
+# Global Paths
+tempPath = permanentPath = databasePath = settingsFilePath = log_file = logoPath = qr_code_folder_path = ""
 
 def get_os_specific_path():
     global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logoPath, qr_code_folder_path
 
-    # Get the base directory where main.py resides
+    # Get the base directory where the script is located
     base_path = os.path.dirname(os.path.abspath(__file__))
 
     if not os.path.exists(base_path):
         raise FileNotFoundError("Base directory does not exist.")
 
-    # OS-dependent paths
     program_data_path = os.path.join(base_path, "ProgramData")
     tempPath = os.path.join(base_path, "TempData")
     permanentPath = os.path.join(base_path, "Timesheets")
-    qr_code_folder_path = os.path.join(base_path, "QR_Codes")  # Path for QR codes
-
+    qr_code_folder_path = os.path.join(base_path, "QR_Codes")
     backup_folder = os.path.join(base_path, "Backups")
 
-    # Ensure directories exist
-    os.makedirs(program_data_path, exist_ok=True)
-    os.makedirs(tempPath, exist_ok=True)
-    os.makedirs(permanentPath, exist_ok=True)
-    os.makedirs(backup_folder, exist_ok=True)
+    for folder in [program_data_path, tempPath, permanentPath, backup_folder, qr_code_folder_path]:
+        os.makedirs(folder, exist_ok=True)
 
-    # Paths for specific files
     settingsFilePath = os.path.join(program_data_path, "settings.json")
     log_file = os.path.join(program_data_path, "staff_clock_system.log")
     logoPath = os.path.join(program_data_path, "Logo.png")
@@ -78,22 +74,20 @@ def get_os_specific_path():
 
     configure_logging()
 
-    # Ensure files and folders exist or restore them from backups
     check_and_restore_file(databasePath, backup_folder, generate_default_database)
     check_and_restore_file(settingsFilePath, backup_folder, generate_default_settings)
     check_and_restore_folder(qr_code_folder_path, backup_folder)
 
 def check_and_restore_folder(folder_path, backup_folder):
-    """Ensure a folder exists or restore it from backup if available."""
     if os.path.exists(folder_path):
         logging.info(f"Folder found: {folder_path}")
         return
 
-    # Search for zipped backups containing the folder
-    zip_files = [
-        os.path.join(backup_folder, f) for f in os.listdir(backup_folder) if f.endswith('.zip')
-    ]
-    zip_files.sort(key=os.path.getmtime, reverse=True)  # Sort by modification time (newest first)
+    zip_files = sorted(
+        [os.path.join(backup_folder, f) for f in os.listdir(backup_folder) if f.endswith('.zip')],
+        key=os.path.getmtime,
+        reverse=True
+    )
 
     for zip_file in zip_files:
         try:
@@ -107,7 +101,6 @@ def check_and_restore_folder(folder_path, backup_folder):
         except zipfile.BadZipFile:
             logging.error(f"Corrupted zip file: {zip_file}")
 
-    # If no backup exists, create the folder
     logging.warning(f"No backup found for folder '{folder_path}'. Creating new folder.")
     os.makedirs(folder_path, exist_ok=True)
 
@@ -116,16 +109,15 @@ def check_and_restore_file(primary_path, backup_folder, generate_default=None):
         logging.info(f"File found: {primary_path}")
         return
 
-    # Look for zipped backups
-    zip_files = [
-        os.path.join(backup_folder, f) for f in os.listdir(backup_folder) if f.endswith('.zip')
-    ]
-    zip_files.sort(key=os.path.getmtime, reverse=True)  # Sort backups by modification time (newest first)
+    zip_files = sorted(
+        [os.path.join(backup_folder, f) for f in os.listdir(backup_folder) if f.endswith('.zip')],
+        key=os.path.getmtime,
+        reverse=True
+    )
 
     for zip_file in zip_files:
         try:
             with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-                # Check if the file exists in the zip archive
                 if os.path.basename(primary_path) in zip_ref.namelist():
                     zip_ref.extract(os.path.basename(primary_path), os.path.dirname(primary_path))
                     logging.info(f"Restored {primary_path} from backup {zip_file}")
@@ -133,12 +125,10 @@ def check_and_restore_file(primary_path, backup_folder, generate_default=None):
         except zipfile.BadZipFile:
             logging.error(f"Corrupted zip file: {zip_file}")
 
-    # If no backup exists for files like the logo, raise an error
     if primary_path == logoPath:
-        logging.error(f"Critical: Logo file not found in either {primary_path} or backups.")
+        logging.error(f"Critical: Logo file not found in {primary_path} or backups.")
         raise FileNotFoundError(f"Logo file missing and no backups available in {backup_folder}.")
 
-    # For other files, generate default if a function is provided
     if generate_default:
         logging.warning(f"No backup found for {primary_path}. Generating default.")
         generate_default(primary_path)
@@ -147,7 +137,6 @@ def generate_default_database(path):
     conn = sqlite3.connect(path)
     c = conn.cursor()
 
-    # Create the staff table
     c.execute('''
         CREATE TABLE IF NOT EXISTS staff (
             name TEXT NOT NULL,
@@ -158,7 +147,6 @@ def generate_default_database(path):
         )
     ''')
 
-    # Create the clock_records table
     c.execute('''
         CREATE TABLE IF NOT EXISTS clock_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -171,7 +159,6 @@ def generate_default_database(path):
         )
     ''')
 
-    # Create the archive_records table
     c.execute('''
         CREATE TABLE IF NOT EXISTS archive_records (
             staff_name TEXT,
@@ -187,9 +174,13 @@ def generate_default_database(path):
     logging.info(f"Default database created at {path}")
 
 def generate_default_settings(path):
-    default_settings = {"start_day": 21, "end_day": 20, "printer_IP": "10.60.1.146"}
+    default_settings = {
+        "start_day": 21,
+        "end_day": 20,
+        "printer_IP": "10.60.1.146"
+    }
     with open(path, "w") as file:
-        json.dump(default_settings, file)
+        json.dump(default_settings, file, indent=4)
     logging.info(f"Default settings file created at {path}")
 
 def configure_logging():
@@ -198,12 +189,19 @@ def configure_logging():
         level=logging.DEBUG,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
-    date = datetime.date.now()
-    logging.info(f"Logging initialized for: {date}")
+    logging.info(f"Logging initialized on {datetime.now().date()}")
+
+if __name__ == "__main__":
+    get_os_specific_path()
+
 
 class StaffClockInOutSystem(QMainWindow):
     def __init__(self):
         super().__init__()
+        screen =  QApplication.primaryScreen()
+        if screen:
+            rect = screen.availableGeometry()
+            self.setFixedSize(rect.width(), rect.height())
         self.role_entry = QLineEdit()
         self.setWindowTitle("Staff Digital Timesheet System")
         self.showMaximized()

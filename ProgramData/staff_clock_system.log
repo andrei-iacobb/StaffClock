@@ -88,3 +88,26 @@
 2025-02-04 18:20:35,488 - INFO - PDF created successfully at '/Users/andreiiacob/StaffClock/TempData/Jo_temp.pdf'.
 2025-02-04 18:20:35,503 - INFO - PDF sent to printer successfully
 2025-02-04 18:20:45,508 - INFO - Temporary PDF file '/Users/andreiiacob/StaffClock/TempData/Jo_temp.pdf' deleted after delay.
+2025-02-07 12:14:47,565 - INFO - Logging initialized on 2025-02-07
+2025-02-07 12:14:47,565 - INFO - File found: /home/andrei/StaffClock/ProgramData/staff_hours.db
+2025-02-07 12:14:47,565 - INFO - File found: /home/andrei/StaffClock/ProgramData/settings.json
+2025-02-07 12:14:47,565 - INFO - Folder found: /home/andrei/StaffClock/QR_Codes
+2025-02-07 12:14:47,565 - INFO - Logging initialized on 2025-02-07
+2025-02-07 12:14:47,565 - INFO - File found: /home/andrei/StaffClock/ProgramData/staff_hours.db
+2025-02-07 12:14:47,565 - INFO - File found: /home/andrei/StaffClock/ProgramData/settings.json
+2025-02-07 12:14:47,565 - INFO - Folder found: /home/andrei/StaffClock/QR_Codes
+2025-02-07 12:14:47,597 - INFO - UI setup complete.
+2025-02-07 12:14:47,608 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '192.168.1.196'}
+2025-02-07 12:14:47,608 - INFO - Initializing TimesheetCheckerThread...
+2025-02-07 12:17:45,730 - INFO - Logging initialized on 2025-02-07
+2025-02-07 12:17:45,731 - INFO - File found: /home/andrei/StaffClock/ProgramData/staff_hours.db
+2025-02-07 12:17:45,731 - INFO - File found: /home/andrei/StaffClock/ProgramData/settings.json
+2025-02-07 12:17:45,731 - INFO - Folder found: /home/andrei/StaffClock/QR_Codes
+2025-02-07 12:17:45,731 - INFO - Logging initialized on 2025-02-07
+2025-02-07 12:17:45,731 - INFO - File found: /home/andrei/StaffClock/ProgramData/staff_hours.db
+2025-02-07 12:17:45,731 - INFO - File found: /home/andrei/StaffClock/ProgramData/settings.json
+2025-02-07 12:17:45,731 - INFO - Folder found: /home/andrei/StaffClock/QR_Codes
+2025-02-07 12:17:45,761 - INFO - UI setup complete.
+2025-02-07 12:17:45,770 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '192.168.1.196'}
+2025-02-07 12:17:45,770 - INFO - Initializing TimesheetCheckerThread...
+2025-02-07 12:17:56,448 - INFO - Opening admin tab
