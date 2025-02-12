@@ -16,7 +16,7 @@ import platform
 import zipfile
 import qrcode
 import cv2
-
+import subprocess
 import time
 import sys
 from datetime import datetime, timedelta
@@ -26,10 +26,12 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QDialog, QMessageBox, QDialogButtonBox, QTableWidget, QHeaderView, QAbstractItemView,
     QTableWidgetItem, QCompleter
 )
-from PyQt6.QtCore import Qt, QTimer, QTime, QEvent
+from PyQt6.QtCore import Qt, QTimer, QTime, QEvent, QUrl
 from PyQt6.QtGui import QFont, QPixmap, QImage, QScreen
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWebEngineCore import QWebEngineSettings
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -68,14 +70,22 @@ def get_os_specific_path():
         os.makedirs(folder, exist_ok=True)
 
     settingsFilePath = os.path.join(program_data_path, "settings.json")
+
     log_file = os.path.join(program_data_path, "staff_clock_system.log")
     logoPath = os.path.join(program_data_path, "Logo.png")
     databasePath = os.path.join(program_data_path, "staff_hours.db")
 
     configure_logging()
 
+    # Get screen dimensions before checking files
+    screen = QApplication.primaryScreen()
+    if screen:
+        rect = screen.availableGeometry()
+    else:
+        rect = None
+
     check_and_restore_file(databasePath, backup_folder, generate_default_database)
-    check_and_restore_file(settingsFilePath, backup_folder, generate_default_settings)
+    check_and_restore_file(settingsFilePath, backup_folder, lambda path: generate_default_settings(path, rect))
     check_and_restore_folder(qr_code_folder_path, backup_folder)
 
 def check_and_restore_folder(folder_path, backup_folder):
@@ -173,11 +183,13 @@ def generate_default_database(path):
     conn.close()
     logging.info(f"Default database created at {path}")
 
-def generate_default_settings(path):
+def generate_default_settings(path, rect=None):
     default_settings = {
         "start_day": 21,
         "end_day": 20,
-        "printer_IP": "10.60.1.146"
+        "printer_IP": "10.60.1.146",
+        "width": rect.width() if rect else 1920,  # Default fallback width
+        "height": rect.height() if rect else 1080  # Default fallback height
     }
     with open(path, "w") as file:
         json.dump(default_settings, file, indent=4)
@@ -198,10 +210,14 @@ if __name__ == "__main__":
 class StaffClockInOutSystem(QMainWindow):
     def __init__(self):
         super().__init__()
-        screen =  QApplication.primaryScreen()
+        screen = QApplication.primaryScreen()
         if screen:
             rect = screen.availableGeometry()
             self.setFixedSize(rect.width(), rect.height())
+            
+            # Update settings with current screen dimensions
+            self.update_screen_dimensions(rect)
+            
         self.role_entry = QLineEdit()
         self.setWindowTitle("Staff Digital Timesheet System")
         self.showMaximized()
@@ -659,11 +675,13 @@ class StaffClockInOutSystem(QMainWindow):
         if len(staff_code) == 4 and staff_code.isdigit():
             conn = sqlite3.connect(databasePath)
             c = conn.cursor()
-            c.execute('SELECT name FROM staff WHERE code = ?', (staff_code,))
+            c.execute('SELECT name, role FROM staff WHERE code = ?', (staff_code,))
             staff = c.fetchone()
             conn.close()
             if staff:
                 self.greeting_label.setText(f'Hello, {staff[0]}!')
+                if hasattr(self, 'role_entry'):
+                    self.role_entry.setText(staff[1] if staff[1] else '')
 
                 # Check if clocked in
                 conn = sqlite3.connect(databasePath)
@@ -680,7 +698,9 @@ class StaffClockInOutSystem(QMainWindow):
                 else:
                     self.clock_in_button.setText("Enter Building")
             else:
-                self.greeting_label.setText('')
+                self.greeting_label.setText("")
+                if hasattr(self, 'role_entry'):
+                    self.role_entry.setText("")
         elif staff_code == '123456':  # Admin code
             self.greeting_label.setText("Admin Mode Activated")
             self.admin_button.show()
@@ -831,8 +851,24 @@ class StaffClockInOutSystem(QMainWindow):
         self.name_entry = QLineEdit()
         self.name_entry.setFont(QFont("Arial", 16))
         self.name_entry.textChanged.connect(self.update_pin_label)
+        self.name_entry.editingFinished.connect(lambda: self.update_role_from_name(self.name_entry.text()))
+    
         layout.addWidget(name_label)
         layout.addWidget(self.name_entry)
+
+        # Role Field
+        role_label = QLabel("Enter Role:")
+        role_label.setFont(QFont("Arial", 16))
+        self.role_entry = QLineEdit()
+        self.role_entry.setFont(QFont("Arial", 16))
+        layout.addWidget(role_label)
+        layout.addWidget(self.role_entry)
+
+        # Add role completer
+        role_completer = QCompleter(self.fetch_unique_roles(), self)
+        role_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        role_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.role_entry.setCompleter(role_completer)
 
         completer = QCompleter(self.fetch_staff_names_and_roles(), self)
         completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
@@ -881,6 +917,13 @@ class StaffClockInOutSystem(QMainWindow):
         generate_timesheet_button.clicked.connect(lambda: self.generate_one_timesheet())
         layout.addWidget(generate_timesheet_button)
 
+        view_item_button = QPushButton("View Item")
+        view_item_button.setFont(QFont("Arial", 16))
+        view_item_button.setMinimumSize(150, 50)
+        view_item_button.setStyleSheet("background-color: #ffc107; color: black;")  # Yellow shade with black text
+        view_item_button.clicked.connect(lambda: self.viewItem(os.path.join("Timesheets", f"{self.name_entry.text()}_timesheet.pdf")))
+        layout.addWidget(view_item_button)
+            
         settings_button = QPushButton("Settings")
         settings_button.setFont(QFont("Arial", 16))
         settings_button.setMinimumSize(150, 50)
@@ -965,6 +1008,33 @@ class StaffClockInOutSystem(QMainWindow):
         layout.addWidget(clock_record_button)
 
         comment_menu.exec()
+
+    def calculate_pdf_dimensions(self, screen_width, screen_height):
+    # A4 ratio (height/width)
+        A4_RATIO = 1.414
+    
+    # Calculate maximum possible width and height while maintaining A4 ratio
+    # Use 80% of screen dimensions to leave room for UI elements
+        max_width = int(screen_width * 0.8)
+        max_height = int(screen_height * 0.8)
+    
+    # Calculate dimensions based on screen constraints
+        if max_height / max_width > A4_RATIO:
+        # Screen is taller than A4 ratio, width is the constraint
+            width = max_width
+            height = int(width * A4_RATIO)
+        else:
+        # Screen is wider than A4 ratio, height is the constraint
+            height = max_height
+            width = int(height / A4_RATIO)
+    
+    # Ensure dimensions don't exceed screen size
+        width = min(width, max_width)
+        height = min(height, max_height)
+    
+        return width, height
+
+
 
     def add_staff_comment(self, staff_name, parent_menu):
         parent_menu.close()  # Close the parent menu
@@ -1185,16 +1255,15 @@ class StaffClockInOutSystem(QMainWindow):
         return comment_entry.text().strip() if comment_entry.text().strip() else None
 
     def fetch_staff_names_and_roles(self):
-        """Fetch all staff names and roles from the database."""
         try:
-            conn = sqlite3.connect(self.database_path)
+            conn = sqlite3.connect(databasePath)
             cursor = conn.cursor()
-            cursor.execute("SELECT name FROM staff")
-            names_and_roles = [f"{row[0]}" for row in cursor.fetchall()]
+            cursor.execute('SELECT name FROM staff')
+            staff_data = cursor.fetchall()
             conn.close()
-            return names_and_roles
+            return [name[0] for name in staff_data]
         except sqlite3.Error as e:
-            logging.error(f"Error fetching staff names and roles: {e}")
+            logging.error(f"Database error when fetching staff data: {e}")
             return []
 
     def open_records_tab(self):
@@ -1398,6 +1467,7 @@ class StaffClockInOutSystem(QMainWindow):
 
     def add_staff(self):
         staff_name = self.name_entry.text().strip()
+        staff_role = self.role_entry.text().strip()
 
         if not staff_name:
             self.msg("Please enter a valid staff name.", "warning", "Error")
@@ -1414,10 +1484,11 @@ class StaffClockInOutSystem(QMainWindow):
                 staff_code = random.randint(1000, 9999)
 
             try:
-                c.execute('INSERT INTO staff (name, code) VALUES (?, ?)', (staff_name, staff_code))
+                c.execute('INSERT INTO staff (name, code, role) VALUES (?, ?, ?)', 
+                         (staff_name, staff_code, staff_role))
                 conn.commit()
                 self.msg(f"Staff member {staff_name} added with code {staff_code}.", "info", "Success")
-                logging.info(f"Staff member {staff_name} added with code {staff_code}.")
+                logging.info(f"Staff member {staff_name} added with code {staff_code} and role {staff_role}.")
                 self.generate_qr_code(staff_code)
                 break
             except sqlite3.Error as e:
@@ -1524,16 +1595,55 @@ class StaffClockInOutSystem(QMainWindow):
             logging.error(f"Failed to create PDF: {e}")
             raise
 
-    def open_pdf(self, file_path):
-        """Open the generated PDF using the default system viewer."""
+    def viewItem(self, file_path):
+        """Open the generated PDF using a web engine viewer widget."""
         try:
-            if platform.system() == "Windows":
-                os.startfile(file_path)  # Windows-specific
-            elif platform.system() == "Darwin":  # macOS
-                subprocess.run(["open", file_path], check=True)
-            else:  # Linux/Other
-                subprocess.run(["xdg-open", file_path], check=True)
-            logging.info(f"Opened PDF at '{file_path}' using the default viewer.")
+            # Ensure the file exists and get absolute path
+            abs_path = os.path.abspath(file_path)
+            if not os.path.exists(abs_path):
+                raise FileNotFoundError(f"PDF file not found at: {abs_path}")
+
+            # Get screen dimensions from settings
+            screen_width = self.settings["width"]
+            screen_height = self.settings["height"]
+            
+            # Calculate proportional dimensions
+            pdf_width, pdf_height = self.calculate_pdf_dimensions(screen_width, screen_height)
+            
+            # Create PDF viewer dialog
+            pdf_dialog = QDialog(self)
+            pdf_dialog.setWindowTitle("PDF Viewer")
+            pdf_dialog.setFixedSize(pdf_width, pdf_height)
+            pdf_dialog.setWindowFlags(pdf_dialog.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+            
+            # Center the dialog on the screen
+            screen = QApplication.primaryScreen().geometry()
+            pdf_dialog.move(
+                (screen.width() - pdf_width) // 2,
+                (screen.height() - pdf_height) // 2
+            )
+            
+            # Create web engine view for PDF
+            web_view = QWebEngineView()
+            settings = web_view.settings()
+            settings.setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, True)
+            settings.setAttribute(QWebEngineSettings.WebAttribute.PdfViewerEnabled, True)
+            
+            # Load the PDF file
+            web_view.setUrl(QUrl.fromLocalFile(abs_path))
+            
+            # Remove margins and make it look more like Preview
+            layout = QVBoxLayout(pdf_dialog)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(0)
+
+            
+            # Add the web view to fill the entire dialog
+            layout.addWidget(web_view)
+            
+            pdf_dialog.exec()
+            logging.info(f"Opened PDF at '{abs_path}' in viewer widget")
+            
         except Exception as e:
             logging.error(f"Failed to open PDF: {e}")
             raise
@@ -1890,6 +2000,64 @@ class StaffClockInOutSystem(QMainWindow):
         # Build the PDF
         doc.build(elements)
         logging.info(f"Built Timesheet for {employee_name}")
+
+    def update_screen_dimensions(self, rect):
+        """Update the settings file with current screen dimensions."""
+        try:
+            with open(settingsFilePath, 'r') as file:
+                settings = json.load(file)
+            
+            settings['width'] = rect.width()
+            settings['height'] = rect.height()
+            
+            with open(settingsFilePath, 'w') as file:
+                json.dump(settings, file, indent=4)
+            
+            logging.info(f"Updated screen dimensions in settings: {rect.width()}x{rect.height()}")
+        except Exception as e:
+            logging.error(f"Failed to update screen dimensions in settings: {e}")
+
+    def fetch_unique_roles(self):
+        try:
+            conn = sqlite3.connect(databasePath)
+            cursor = conn.cursor()
+            cursor.execute('SELECT DISTINCT role FROM staff WHERE role IS NOT NULL')
+            roles = [role[0] for role in cursor.fetchall() if role[0]]
+            conn.close()
+            return roles
+        except sqlite3.Error as e:
+            logging.error(f"Database error when fetching roles: {e}")
+            return []
+
+    def update_role_from_name(self, name):
+        if name:
+            conn = sqlite3.connect(databasePath)
+            c = conn.cursor()
+            c.execute('SELECT role FROM staff WHERE name = ?', (name,))
+            result = c.fetchone()
+            conn.close()
+            
+            if result and result[0]:
+                self.role_entry.setText(result[0])
+            else:
+                self.role_entry.setText("")
+
+    def update_role_label(self):
+        name = self.name_entry.text().strip()
+        try:
+            conn = sqlite3.connect(databasePath)
+            c = conn.cursor()
+            c.execute('SELECT role FROM staff WHERE name = ?', (name,))
+            result = c.fetchone()
+            conn.close()
+
+            if result and result[0]:
+                self.role_entry.setText(result[0])
+            else:
+                self.role_entry.setText("Unknown")
+        except sqlite3.Error as e:
+            logging.error(f"Database error when fetching role: {e}")
+            self.role_entry.setText("Unknown")
 
 if __name__ == '__main__':
     get_os_specific_path()

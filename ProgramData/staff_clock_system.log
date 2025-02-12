@@ -111,3 +111,429 @@
 2025-02-07 12:17:45,770 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '192.168.1.196'}
 2025-02-07 12:17:45,770 - INFO - Initializing TimesheetCheckerThread...
 2025-02-07 12:17:56,448 - INFO - Opening admin tab
+2025-02-10 18:22:04,158 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:22:04,158 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:22:04,158 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:22:04,158 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:22:04,158 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:22:04,158 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:22:04,158 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:22:04,158 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:22:04,653 - INFO - UI setup complete.
+2025-02-10 18:22:04,706 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '192.168.1.196'}
+2025-02-10 18:22:04,706 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 18:22:11,753 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:22:11,753 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:22:11,753 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:22:11,753 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:22:11,753 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:22:11,753 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:22:11,753 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:22:11,753 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:22:11,873 - INFO - UI setup complete.
+2025-02-10 18:22:11,922 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '192.168.1.196'}
+2025-02-10 18:22:11,922 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 18:28:49,247 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:28:49,247 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:28:49,247 - WARNING - No backup found for /Users/andreiiacob/StaffClock/ProgramData/settings.json. Generating default.
+2025-02-10 18:41:32,299 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:41:32,299 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:41:32,299 - WARNING - No backup found for /Users/andreiiacob/StaffClock/ProgramData/settings.json. Generating default.
+2025-02-10 18:41:32,300 - INFO - Default settings file created at /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:41:32,300 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:41:32,300 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:41:32,300 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:41:32,300 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:41:32,300 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:41:32,334 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 18:41:32,416 - INFO - UI setup complete.
+2025-02-10 18:41:32,461 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 18:41:32,461 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 18:43:36,511 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:43:36,511 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:43:36,511 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:43:36,511 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:43:36,511 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:43:36,511 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:43:36,511 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:43:36,511 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:43:36,547 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 18:43:36,627 - INFO - UI setup complete.
+2025-02-10 18:43:36,678 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 18:43:36,678 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 18:43:38,081 - INFO - Opening admin tab
+2025-02-10 18:45:54,483 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:45:54,483 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:45:54,483 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:45:54,483 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:45:54,483 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:45:54,483 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:45:54,483 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:45:54,483 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:45:54,523 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 18:45:54,607 - INFO - UI setup complete.
+2025-02-10 18:45:54,652 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 18:45:54,652 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 18:45:56,860 - INFO - Opening admin tab
+2025-02-10 18:46:00,593 - ERROR - Staff member 'jo' not found.
+2025-02-10 18:46:04,545 - INFO - Built Timesheet for Jo
+2025-02-10 18:46:05,622 - INFO - Timesheet generated for Jo.
+2025-02-10 18:54:36,923 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:54:36,923 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:54:36,923 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:54:36,923 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:54:36,923 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:54:36,923 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:54:36,923 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:54:36,923 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:54:36,973 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 18:54:37,056 - INFO - UI setup complete.
+2025-02-10 18:54:37,113 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 18:54:37,113 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 18:54:39,158 - INFO - Opening admin tab
+2025-02-10 18:54:52,518 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:54:52,518 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:54:52,518 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:54:52,518 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:54:52,518 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:54:52,518 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:54:52,518 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:54:52,518 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:54:52,554 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 18:54:52,629 - INFO - UI setup complete.
+2025-02-10 18:54:52,700 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 18:54:52,700 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 18:54:56,831 - INFO - Opening admin tab
+2025-02-10 18:57:25,289 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:57:25,289 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:57:25,289 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:57:25,289 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:57:25,290 - INFO - Logging initialized on 2025-02-10
+2025-02-10 18:57:25,290 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 18:57:25,290 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 18:57:25,290 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 18:57:25,330 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 18:57:25,415 - INFO - UI setup complete.
+2025-02-10 18:57:25,462 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 18:57:25,462 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 18:57:26,779 - INFO - Opening admin tab
+2025-02-10 19:00:38,135 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:00:38,135 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:00:38,135 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:00:38,135 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:00:38,135 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:00:38,135 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:00:38,135 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:00:38,135 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:00:38,169 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:00:38,250 - INFO - UI setup complete.
+2025-02-10 19:00:38,306 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:00:38,306 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:00:40,320 - INFO - Opening admin tab
+2025-02-10 19:00:45,494 - INFO - Opened PDF at 'Timesheets/Jo_timesheet.pdf' using the default viewer.
+2025-02-10 19:00:59,072 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:00:59,072 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:00:59,072 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:00:59,072 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:00:59,072 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:00:59,072 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:00:59,072 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:00:59,072 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:00:59,105 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:00:59,181 - INFO - UI setup complete.
+2025-02-10 19:00:59,230 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:00:59,230 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:01:51,083 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:01:51,083 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:01:51,083 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:01:51,084 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:01:51,084 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:01:51,084 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:01:51,084 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:01:51,084 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:01:51,120 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:01:51,200 - INFO - UI setup complete.
+2025-02-10 19:01:51,248 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:01:51,248 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:01:53,489 - INFO - Opening admin tab
+2025-02-10 19:01:58,315 - INFO - Opened PDF at 'Timesheets/Jo_timesheet.pdf' using the default viewer.
+2025-02-10 19:02:49,262 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:02:49,263 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:02:49,263 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:02:49,263 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:02:49,263 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:02:49,263 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:02:49,263 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:02:49,263 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:02:49,301 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:02:49,382 - INFO - UI setup complete.
+2025-02-10 19:02:49,437 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:02:49,437 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:02:50,822 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:02:50,823 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:02:50,823 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:02:50,823 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:02:50,823 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:02:50,823 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:02:50,823 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:02:50,823 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:02:50,860 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:02:50,938 - INFO - UI setup complete.
+2025-02-10 19:02:50,984 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:02:50,984 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:02:54,906 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:02:54,906 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:02:54,906 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:02:54,906 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:02:54,906 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:02:54,906 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:02:54,906 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:02:54,906 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:02:54,948 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:02:55,031 - INFO - UI setup complete.
+2025-02-10 19:02:55,083 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:02:55,083 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:02:57,225 - INFO - Opening admin tab
+2025-02-10 19:03:12,701 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:03:12,701 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:03:12,701 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:03:12,701 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:03:12,701 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:03:12,701 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:03:12,701 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:03:12,701 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:03:12,743 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:03:12,826 - INFO - UI setup complete.
+2025-02-10 19:03:12,879 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:03:12,879 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:03:14,514 - INFO - Opening admin tab
+2025-02-10 19:04:18,460 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:04:18,460 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:04:18,460 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:04:18,460 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:04:18,460 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:04:18,460 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:04:18,460 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:04:18,460 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:04:18,497 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:04:18,578 - INFO - UI setup complete.
+2025-02-10 19:04:18,631 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:04:18,631 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:04:20,000 - INFO - Opening admin tab
+2025-02-10 19:04:39,183 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:04:39,183 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:04:39,183 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:04:39,183 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:04:39,183 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:04:39,183 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:04:39,184 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:04:39,184 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:04:39,222 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:04:39,305 - INFO - UI setup complete.
+2025-02-10 19:04:39,353 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:04:39,353 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:04:41,306 - INFO - Opening admin tab
+2025-02-10 19:08:56,756 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:08:56,756 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:08:56,756 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:08:56,756 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:08:56,756 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:08:56,756 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:08:56,756 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:08:56,756 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:08:56,792 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:08:56,872 - INFO - UI setup complete.
+2025-02-10 19:08:56,925 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:08:56,925 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:08:58,309 - INFO - Opening admin tab
+2025-02-10 19:09:13,904 - INFO - Opened PDF at '/Users/andreiiacob/StaffClock/Timesheets/Jo_timesheet.pdf' in viewer widget
+2025-02-10 19:10:38,014 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:10:38,014 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:10:38,014 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:10:38,014 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:10:38,014 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:10:38,014 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:10:38,014 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:10:38,014 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:10:38,055 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:10:38,138 - INFO - UI setup complete.
+2025-02-10 19:10:38,185 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:10:38,185 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:10:40,997 - INFO - Opening admin tab
+2025-02-10 19:10:52,649 - INFO - Opened PDF at '/Users/andreiiacob/StaffClock/Timesheets/Jo_timesheet.pdf' in viewer widget
+2025-02-10 19:10:55,056 - INFO - Switched to windowed mode.
+2025-02-10 19:10:55,599 - INFO - Switched to fullscreen mode.
+2025-02-10 19:12:50,218 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:12:50,218 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:12:50,218 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:12:50,218 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:12:50,219 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:12:50,219 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:12:50,219 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:12:50,219 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:12:50,256 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:12:50,336 - INFO - UI setup complete.
+2025-02-10 19:12:50,381 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:12:50,381 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:12:51,645 - INFO - Opening admin tab
+2025-02-10 19:13:06,888 - INFO - Switched to windowed mode.
+2025-02-10 19:17:25,503 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:17:25,503 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:17:25,503 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:17:25,503 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:17:25,503 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:17:25,503 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:17:25,503 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:17:25,503 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:17:25,547 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:17:25,629 - INFO - UI setup complete.
+2025-02-10 19:17:25,684 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:17:25,684 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:17:26,943 - INFO - Opening admin tab
+2025-02-10 19:17:28,864 - ERROR - Failed to open PDF: PDF file not found at: /Users/andreiiacob/StaffClock/Timesheets/_timesheet.pdf
+2025-02-10 19:17:32,499 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:17:32,499 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:17:32,499 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:17:32,499 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:17:32,499 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:17:32,500 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:17:32,500 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:17:32,500 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:17:32,551 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:17:32,633 - INFO - UI setup complete.
+2025-02-10 19:17:32,680 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:17:32,680 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:17:34,057 - INFO - Opening admin tab
+2025-02-10 19:17:35,510 - DEBUG - Starting open_records_tab function
+2025-02-10 19:17:36,596 - ERROR - Error: Invalid staff name ''
+2025-02-10 19:17:48,541 - INFO - Opened PDF at '/Users/andreiiacob/StaffClock/Timesheets/Jo_timesheet.pdf' in viewer widget
+2025-02-10 19:29:33,696 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:29:33,696 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:29:33,696 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:29:33,696 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:29:33,696 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:29:33,696 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:29:33,696 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:29:33,696 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:29:33,739 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:29:33,821 - INFO - UI setup complete.
+2025-02-10 19:29:33,877 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:29:33,877 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:29:35,347 - INFO - Opening admin tab
+2025-02-10 19:30:32,539 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:30:32,539 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:30:32,539 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:30:32,539 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:30:32,539 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:30:32,539 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:30:32,539 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:30:32,539 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:30:32,578 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:30:32,658 - INFO - UI setup complete.
+2025-02-10 19:30:32,704 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:30:32,704 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:30:35,577 - INFO - Opening admin tab
+2025-02-10 19:31:04,577 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:31:04,577 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:31:04,577 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:31:04,577 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:31:04,577 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:31:04,577 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:31:04,577 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:31:04,577 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:31:04,613 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:31:04,694 - INFO - UI setup complete.
+2025-02-10 19:31:04,742 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:31:04,742 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:31:06,623 - INFO - Opening admin tab
+2025-02-10 19:31:54,047 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:31:54,048 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:31:54,048 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:31:54,048 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:31:54,048 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:31:54,048 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:31:54,048 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:31:54,048 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:31:54,083 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:31:54,161 - INFO - UI setup complete.
+2025-02-10 19:31:54,213 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:31:54,213 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:31:56,642 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:31:56,642 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:31:56,642 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:31:56,642 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:31:56,642 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:31:56,642 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:31:56,642 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:31:56,642 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:31:56,677 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:31:56,754 - INFO - UI setup complete.
+2025-02-10 19:31:56,802 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:31:56,802 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:32:01,674 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:32:01,674 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:32:01,674 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:32:01,674 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:32:01,675 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:32:01,675 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:32:01,675 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:32:01,675 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:32:01,711 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:32:01,794 - INFO - UI setup complete.
+2025-02-10 19:32:01,843 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:32:01,844 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:32:03,495 - INFO - Opening admin tab
+2025-02-10 19:35:56,201 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:35:56,201 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:35:56,202 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:35:56,202 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:35:56,202 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:35:56,202 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:35:56,202 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:35:56,202 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:35:56,239 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:35:56,324 - INFO - UI setup complete.
+2025-02-10 19:35:56,379 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:35:56,379 - INFO - Initializing TimesheetCheckerThread...
+2025-02-10 19:35:58,818 - INFO - Opening admin tab
+2025-02-10 19:36:07,180 - ERROR - Missing staff name.
+2025-02-10 19:37:18,698 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:37:18,699 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:37:18,699 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:37:18,699 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:37:18,699 - INFO - Logging initialized on 2025-02-10
+2025-02-10 19:37:18,699 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-10 19:37:18,699 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-10 19:37:18,699 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-10 19:37:18,734 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-10 19:37:18,813 - INFO - UI setup complete.
+2025-02-10 19:37:18,864 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-10 19:37:18,864 - INFO - Initializing TimesheetCheckerThread...
+2025-02-11 14:46:41,823 - INFO - Logging initialized on 2025-02-11
+2025-02-11 14:46:41,824 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-11 14:46:41,824 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-11 14:46:41,824 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-11 14:46:41,824 - INFO - Logging initialized on 2025-02-11
+2025-02-11 14:46:41,824 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-11 14:46:41,824 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-11 14:46:41,824 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-11 14:46:41,884 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-11 14:46:41,975 - INFO - UI setup complete.
+2025-02-11 14:46:42,035 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-11 14:46:42,035 - INFO - Initializing TimesheetCheckerThread...
+2025-02-11 14:46:43,304 - INFO - Opening admin tab
+2025-02-11 14:46:56,894 - INFO - Opened PDF at '/Users/andreiiacob/StaffClock/Timesheets/Jo_timesheet.pdf' in viewer widget
+2025-02-11 19:47:45,944 - INFO - Logging initialized on 2025-02-11
+2025-02-11 19:47:45,945 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-11 19:47:45,945 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-11 19:47:45,945 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-11 19:47:45,945 - INFO - Logging initialized on 2025-02-11
+2025-02-11 19:47:45,945 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-02-11 19:47:45,945 - INFO - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-02-11 19:47:45,945 - INFO - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-02-11 19:47:45,996 - INFO - Updated screen dimensions in settings: 1512x944
+2025-02-11 19:47:46,086 - INFO - UI setup complete.
+2025-02-11 19:47:46,147 - INFO - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-02-11 19:47:46,148 - INFO - Initializing TimesheetCheckerThread...
+2025-02-11 19:47:48,217 - INFO - Opening admin tab
+2025-02-11 19:48:13,131 - INFO - Opened PDF at '/Users/andreiiacob/StaffClock/Timesheets/Jo_timesheet.pdf' in viewer widget
