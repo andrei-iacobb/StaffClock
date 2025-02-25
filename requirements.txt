@@ -1,0 +1,9 @@
+keyboard
+pyglet
+qrcode
+opencv-python
+PyQt6
+PyQt6-Qt6
+PyQt6-sip
+reportlab
+
