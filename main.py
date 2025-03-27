@@ -222,7 +222,6 @@ class StaffClockInOutSystem(QMainWindow):
         self.setWindowTitle("Staff Digital Timesheet System")
         self.showMaximized()
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
-        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
         logging.info("UI setup complete.")
 
         self.scanner_active = False  # Track if the scanner is active
@@ -1614,7 +1613,6 @@ class StaffClockInOutSystem(QMainWindow):
             pdf_dialog = QDialog(self)
             pdf_dialog.setWindowTitle("PDF Viewer")
             pdf_dialog.setFixedSize(pdf_width, pdf_height)
-            pdf_dialog.setWindowFlags(pdf_dialog.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
             
             # Center the dialog on the screen
             screen = QApplication.primaryScreen().geometry()
@@ -1699,7 +1697,7 @@ class StaffClockInOutSystem(QMainWindow):
         try:
             # Generate, open, and schedule deletion of the PDF
             self.generate_pdf(file_path, staff_name, records)
-            self.open_pdf(file_path)
+            self.viewItem(file_path)
             self.delete_pdf_after_delay(file_path, delay=10)  # Delete after 60 seconds
         except Exception as e:
             self.msg(f"An error occurred: {e}", "warning", "Error")
