@@ -15,8 +15,14 @@ from datetime import datetime
 from PyQt6.QtCore import QObject, pyqtSignal, QThread
 
 # Import our real device drivers
-from digitalpersona_real import DigitalPersonaU4500
-from biometric_enrollment import BiometricEnrollment
+try:
+    from digitalpersona_sdk_simple import DigitalPersonaU4500
+    print("Using DigitalPersona SDK Simple implementation")
+except ImportError:
+    from digitalpersona_simple import DigitalPersonaSimple as DigitalPersonaU4500
+    print("Using simple DigitalPersona implementation")
+
+from biometric_enrollment import BiometricProfileEnrollment
 
 class FingerprintManager(QObject):
     """Manages fingerprint operations using real DigitalPersona device."""
@@ -30,7 +36,7 @@ class FingerprintManager(QObject):
         super().__init__()
         self.db_path = db_path
         self.device = DigitalPersonaU4500()
-        self.enrollment_system = BiometricEnrollment()
+        self.enrollment_system = BiometricProfileEnrollment()
         self.is_initialized = False
         
         # Initialize fingerprint tables in main database
@@ -106,7 +112,7 @@ class FingerprintManager(QObject):
         """Shutdown the fingerprint device."""
         try:
             if self.enrollment_system:
-                self.enrollment_system.disconnect_device()
+                self.enrollment_system.disconnect()
             
             if self.device:
                 self.device.disconnect()
@@ -141,8 +147,8 @@ class FingerprintManager(QObject):
             biometric_user_id = f"emp_{employee_id}_{int(time.time())}"
             
             # Perform enrollment using the biometric system
-            success, message, stats = self.enrollment_system.enroll_user(
-                biometric_user_id, f"{employee_name} (ID: {employee_id})"
+            success, message, stats = self.enrollment_system.enroll_biometric_profile(
+                employee_id, employee_name
             )
             
             if success:
@@ -196,49 +202,54 @@ class FingerprintManager(QObject):
             image = self.device.capture_fingerprint()
             
             if image is None:
-                return False, None, "Failed to capture fingerprint", 0.0
+                return False, None, "No fingerprint detected", 0.0
             
-            # Try to match against all enrolled employees
-            best_match_employee = None
-            best_match_score = 0.0
-            verification_threshold = 0.6  # Adjust based on testing
+            # Additional validation - check if image has sufficient quality/content
+            import numpy as np
+            if isinstance(image, np.ndarray):
+                # Check if image has sufficient variation (not just noise/empty)
+                if np.std(image) < 10:  # Very low variation suggests no finger present
+                    return False, None, "No fingerprint detected", 0.0
             
-            for emp_data in enrolled_employees:
-                employee_id = emp_data['employee_id']
-                biometric_user_id = emp_data['biometric_user_id']
-                
-                # Verify against this employee's biometric profile
-                success, verify_message, match_score = self.enrollment_system.verify_user(biometric_user_id)
-                
-                logging.debug(f"Verification attempt for {employee_id}: score {match_score:.3f}")
-                
-                if match_score > best_match_score:
-                    best_match_score = match_score
-                    if match_score >= verification_threshold:
-                        best_match_employee = emp_data
+            # Verify against all enrolled employees using the biometric system
+            staff_code, match_score, verify_message = self.enrollment_system.verify_biometric(image)
             
-            if best_match_employee and best_match_score >= verification_threshold:
-                employee_id = best_match_employee['employee_id']
-                employee_name = best_match_employee['employee_name']
+            verification_threshold = 0.9  # Require 90% accuracy to prevent false positives
+            
+            if staff_code and match_score >= verification_threshold:
+                # Find the employee data for this staff code
+                matched_employee = None
+                for emp_data in enrolled_employees:
+                    if emp_data['employee_id'] == staff_code:
+                        matched_employee = emp_data
+                        break
                 
-                # Update verification statistics
-                self._update_employee_verification(employee_id, best_match_score)
+                if matched_employee:
+                    employee_id = matched_employee['employee_id']
+                    employee_name = matched_employee['employee_name']
                 
-                # Log successful verification
-                self._log_fingerprint_action(employee_id, 'VERIFICATION', True, best_match_score,
-                                           f"Successful verification")
-                
-                success_message = f"Employee verified: {employee_name} (ID: {employee_id})"
-                self.fingerprint_captured.emit(success_message)
-                
-                return True, employee_id, success_message, best_match_score
+                    # Update verification statistics
+                    self._update_employee_verification(employee_id, match_score)
+                    
+                    # Log successful verification
+                    self._log_fingerprint_action(employee_id, 'VERIFICATION', True, match_score,
+                                               f"Successful verification")
+                    
+                    success_message = f"Employee verified: {employee_name} (ID: {employee_id})"
+                    self.fingerprint_captured.emit(success_message)
+                    
+                    return True, employee_id, success_message, match_score
+                else:
+                    # Staff code found but no matching employee record
+                    failure_message = f"Staff code {staff_code} not found in employee records"
+                    return False, None, failure_message, match_score
             else:
                 # Log failed verification
-                self._log_fingerprint_action('UNKNOWN', 'VERIFICATION', False, best_match_score,
+                self._log_fingerprint_action('UNKNOWN', 'VERIFICATION', False, match_score,
                                            f"No matching employee found")
                 
-                failure_message = f"Fingerprint verification failed (best score: {best_match_score:.3f})"
-                return False, None, failure_message, best_match_score
+                failure_message = f"Fingerprint verification failed (score: {match_score:.3f})"
+                return False, None, failure_message, match_score
         
         except Exception as e:
             error_msg = f"Error during fingerprint verification: {str(e)}"
@@ -390,10 +401,17 @@ class FingerprintManager(QObject):
                 
                 biometric_user_id = result[0]
                 
-                # Mark as inactive (don't delete for audit trail)
+                # Remove from biometric enrollment system
+                if self.enrollment_system:
+                    biometric_removed = self.enrollment_system.remove_profile(employee_id)
+                    if biometric_removed:
+                        logging.info(f"Removed biometric profile for {employee_id}")
+                    else:
+                        logging.warning(f"Failed to remove biometric profile for {employee_id}")
+                
+                # Delete the record completely for clean re-enrollment
                 conn.execute('''
-                    UPDATE fingerprint_users 
-                    SET status = "INACTIVE"
+                    DELETE FROM fingerprint_users 
                     WHERE employee_id = ?
                 ''', (employee_id,))
                 
@@ -425,6 +443,62 @@ class FingerprintManager(QObject):
         
         except Exception as e:
             return False, f"Device test failed: {str(e)}"
+    
+    def is_device_available(self) -> bool:
+        """Check if fingerprint device is available and ready."""
+        try:
+            if not self.is_initialized:
+                return False
+            
+            device_status = self.device.get_device_status()
+            return device_status.get('connected', False) and device_status.get('device_ready', False)
+        
+        except Exception as e:
+            logging.error(f"Error checking device availability: {e}")
+            return False
+    
+    def authenticate_fingerprint(self, timeout_seconds: int = 5) -> Tuple[Optional[str], str]:
+        """
+        Fast authenticate user fingerprint and return staff code if successful.
+        This method is called by main.py for compatibility.
+        
+        Args:
+            timeout_seconds: Maximum time to wait for fingerprint (default: 5 seconds)
+            
+        Returns:
+            Tuple of (staff_code, message)
+        """
+        success, employee_id, message, match_score = self.verify_employee_fingerprint(timeout_seconds)
+        
+        if success and employee_id:
+            return employee_id, f"Welcome {employee_id}!"
+        else:
+            return None, "Fingerprint not recognized"
+    
+def detect_digitalPersona_device() -> Tuple[bool, str]:
+    """
+    Detect DigitalPersona U.are.U 4500 device availability.
+    
+    Returns:
+        Tuple of (detected, message)
+    """
+    try:
+        # Try to create and connect to device
+        device = DigitalPersonaU4500()
+        
+        if device.connect():
+            status = device.get_device_status()
+            device.disconnect()
+            
+            if status['connected']:
+                return True, f"DigitalPersona U.are.U 4500 detected and ready"
+            else:
+                return False, "DigitalPersona device found but not ready"
+        else:
+            return False, "DigitalPersona U.are.U 4500 not detected or failed to connect"
+    
+    except Exception as e:
+        return False, f"Error detecting DigitalPersona device: {str(e)}"
 
 class FingerprintThread(QThread):
     """Thread for handling fingerprint operations without blocking UI."""
@@ -451,6 +525,14 @@ class FingerprintThread(QThread):
                     self.kwargs.get('timeout', 30)
                 )
                 data = {'employee_id': employee_id, 'match_score': score}
+                self.finished.emit(success, message, data)
+                
+            elif self.operation == 'authenticate':
+                staff_code, message = self.manager.authenticate_fingerprint(
+                    self.kwargs.get('timeout', 5)
+                )
+                success = staff_code is not None
+                data = {'employee_id': staff_code, 'message': message}
                 self.finished.emit(success, message, data)
             
             else:

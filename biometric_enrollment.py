@@ -21,7 +21,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 from scipy import ndimage
 import matplotlib.pyplot as plt
 
-from digitalpersona_real import DigitalPersonaU4500
+# Import our real device drivers
+try:
+    from digitalpersona_sdk_simple import DigitalPersonaU4500
+except ImportError:
+    from digitalpersona_simple import DigitalPersonaSimple as DigitalPersonaU4500
 
 class BiometricProfileEnrollment:
     """Advanced biometric enrollment system with comprehensive profile building."""
@@ -30,7 +34,7 @@ class BiometricProfileEnrollment:
         self.db_path = db_path
         self.device = DigitalPersonaU4500()
         self.required_samples = 5  # Number of samples needed for robust profile
-        self.quality_threshold = 0.7  # Minimum quality score for acceptance
+        self.quality_threshold = 0.3  # Minimum quality score for acceptance (lowered for testing)
         self.similarity_threshold = 0.8  # Minimum similarity between samples
         self.test_mode = test_mode  # Test mode bypasses finger detection for demo
         

@@ -14,7 +14,7 @@ import json
 import subprocess
 import platform
 import zipfile
-import qrcode
+
 import cv2
 import subprocess
 import time
@@ -24,14 +24,14 @@ from os import mkdir, write
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QDialog, QMessageBox, QDialogButtonBox, QTableWidget, QHeaderView, QAbstractItemView,
-    QTableWidgetItem, QCompleter, QGridLayout
+    QTableWidgetItem, QCompleter, QGridLayout, QFrame, QProgressBar, QTextEdit
 )
-from PyQt6.QtCore import Qt, QTimer, QTime, QEvent, QUrl
+from PyQt6.QtCore import Qt, QTimer, QTime, QEvent, QUrl, pyqtSignal
 from PyQt6.QtGui import QFont, QPixmap, QImage, QScreen, QColor
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEngineSettings
+
+
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -46,13 +46,13 @@ from fingerprint_manager import FingerprintManager, detect_digitalPersona_device
 APP_VERSION = "1.0.0"
 
 # Global Paths
-tempPath = permanentPath = databasePath = settingsFilePath = log_file = logoPath = qr_code_folder_path = ""
+tempPath = permanentPath = databasePath = settingsFilePath = log_file = logoPath = ""
 
 # Initialize logging manager
 logger = None
 
 def get_os_specific_path():
-    global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logoPath, qr_code_folder_path, logger
+    global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logoPath, logger
 
     # Get the base directory where the script is located
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -63,10 +63,9 @@ def get_os_specific_path():
     program_data_path = os.path.join(base_path, "ProgramData")
     tempPath = os.path.join(base_path, "TempData")
     permanentPath = os.path.join(base_path, "Timesheets")
-    qr_code_folder_path = os.path.join(base_path, "QR_Codes")
     backup_folder = os.path.join(base_path, "Backups")
 
-    for folder in [program_data_path, tempPath, permanentPath, backup_folder, qr_code_folder_path]:
+    for folder in [program_data_path, tempPath, permanentPath, backup_folder]:
         os.makedirs(folder, exist_ok=True)
 
     settingsFilePath = os.path.join(program_data_path, "settings.json")
@@ -89,7 +88,7 @@ def get_os_specific_path():
 
     check_and_restore_file(databasePath, backup_folder, generate_default_database)
     check_and_restore_file(settingsFilePath, backup_folder, lambda path: generate_default_settings(path, rect))
-    check_and_restore_folder(qr_code_folder_path, backup_folder)
+
 
 def check_and_restore_folder(folder_path, backup_folder):
     if os.path.exists(folder_path):
@@ -219,6 +218,492 @@ def configure_logging():
     )
     logging.info(f"Logging initialized on {datetime.now().date()}")
 
+class FingerprintEnrollmentDialog(QDialog):
+    """Built-in fingerprint enrollment dialog with visual guidance."""
+    
+    def __init__(self, staff_code: str, staff_name: str, parent=None):
+        super().__init__(parent)
+        self.staff_code = staff_code
+        self.staff_name = staff_name
+        self.fingerprint_manager = None
+        self.enrollment_thread = None
+        self.current_step = 0
+        self.total_samples = 5
+        
+        self.setWindowTitle(f"Fingerprint Enrollment - {staff_name}")
+        self.setModal(True)
+        
+        # Match main app colors
+        self.colors = {
+            'primary': '#1a73e8',      # Blue
+            'success': '#34a853',      # Green
+            'danger': '#ea4335',       # Red
+            'warning': '#fbbc05',      # Yellow
+            'dark': '#202124',         # Dark gray
+            'light': '#ffffff',        # White
+            'gray': '#5f6368',         # Medium gray
+            'lighter_dark': '#303134', # Lighter dark for sections
+        }
+        
+        self.setup_ui()
+        self.initialize_fingerprint_manager()
+        self.update_ui_for_step(0)
+    
+    def setup_ui(self):
+        """Set up the user interface matching the main app's dark theme."""
+        # Increase dialog size to reduce crowdedness
+        self.setFixedSize(650, 750)
+        self.setStyleSheet(f"""
+            QDialog {{
+                background: qlineargradient(
+                    x1: 0, y1: 0, x2: 1, y2: 1,
+                    stop: 0 {self.colors['dark']},
+                    stop: 1 {self.colors['dark']}ee
+                );
+                border-radius: 15px;
+            }}
+        """)
+        
+        # Main layout with improved spacing
+        layout = QVBoxLayout(self)
+        layout.setSpacing(30)  # Increased from 25
+        layout.setContentsMargins(35, 35, 35, 35)  # Reduced margins to give more space
+        
+        # Header section with better spacing
+        header_layout = QVBoxLayout()
+        header_layout.setSpacing(15)  # Increased from 12
+        
+        # Title - slightly smaller to save space
+        title_label = QLabel("Fingerprint Enrollment")
+        title_label.setFont(QFont("Arial", 28, QFont.Weight.Medium))  # Reduced from 32
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_label.setStyleSheet(f"color: {self.colors['light']};")
+        header_layout.addWidget(title_label)
+        
+        # Subtitle
+        subtitle_label = QLabel(f"Setting up biometric access for {self.staff_name}")
+        subtitle_label.setFont(QFont("Arial", 16))
+        subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle_label.setStyleSheet(f"color: {self.colors['gray']};")
+        subtitle_label.setWordWrap(True)  # Allow text wrapping for long names
+        header_layout.addWidget(subtitle_label)
+        
+        layout.addLayout(header_layout)
+        
+        # Progress section with reduced padding
+        progress_frame = QFrame()
+        progress_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {self.colors['lighter_dark']};
+                border: 1px solid {self.colors['gray']};
+                border-radius: 10px;
+                padding: 15px;
+            }}
+        """)
+        progress_layout = QVBoxLayout(progress_frame)
+        progress_layout.setSpacing(10)  # Reduced from 12
+        
+        self.progress_label = QLabel("Ready to start")
+        self.progress_label.setFont(QFont("Arial", 15, QFont.Weight.Medium))  # Slightly smaller
+        self.progress_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.progress_label.setStyleSheet(f"color: {self.colors['light']};")
+        progress_layout.addWidget(self.progress_label)
+        
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setMaximum(self.total_samples)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFixedHeight(10)  # Slightly larger for better visibility
+        self.progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: none;
+                border-radius: 5px;
+                background-color: {self.colors['gray']};
+            }}
+            QProgressBar::chunk {{
+                background-color: {self.colors['success']};
+                border-radius: 5px;
+            }}
+        """)
+        progress_layout.addWidget(self.progress_bar)
+        
+        self.sample_counter = QLabel("0 of 5 samples captured")
+        self.sample_counter.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.sample_counter.setFont(QFont("Arial", 12))
+        self.sample_counter.setStyleSheet(f"color: {self.colors['gray']};")
+        progress_layout.addWidget(self.sample_counter)
+        
+        layout.addWidget(progress_frame)
+        
+        # Central fingerprint guide with improved layout
+        visual_frame = QFrame()
+        visual_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {self.colors['lighter_dark']};
+                border: 2px solid {self.colors['primary']};
+                border-radius: 10px;
+                padding: 25px 20px;
+            }}
+        """)
+        visual_layout = QVBoxLayout(visual_frame)
+        visual_layout.setSpacing(20)  # Increased from 15
+        
+        self.finger_guide = QLabel()
+        self.finger_guide.setFixedHeight(120)  # Increased from 100
+        self.finger_guide.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.finger_guide.setFont(QFont("Arial", 24, QFont.Weight.Bold))  # Increased from 20
+        self.update_finger_guide("ready")
+        visual_layout.addWidget(self.finger_guide)
+        
+        # Instruction text
+        self.instruction_label = QLabel("Click 'Start Enrollment' to begin")
+        self.instruction_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.instruction_label.setFont(QFont("Arial", 14))
+        self.instruction_label.setStyleSheet(f"color: {self.colors['gray']};")
+        self.instruction_label.setWordWrap(True)
+        visual_layout.addWidget(self.instruction_label)
+        
+        layout.addWidget(visual_frame)
+        
+        # Status section with more breathing room
+        self.status_label = QLabel("")
+        self.status_label.setFont(QFont("Arial", 15, QFont.Weight.Bold))  # Slightly smaller
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_label.setFixedHeight(40)  # Increased from 35
+        self.status_label.setStyleSheet(f"color: {self.colors['light']};")
+        self.status_label.setWordWrap(True)
+        layout.addWidget(self.status_label)
+        
+        # Add some spacing before buttons
+        layout.addSpacing(10)
+        
+        # Buttons with improved spacing
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(25)  # Increased from 20
+        
+        cancel_button = QPushButton("Cancel")
+        cancel_button.setFont(QFont("Arial", 15))  # Slightly smaller
+        cancel_button.setMinimumSize(130, 45)  # Slightly smaller
+        cancel_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {self.colors['gray']};
+                color: {self.colors['light']};
+                border-radius: 10px;
+                border: none;
+                padding: 8px 16px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.colors['gray']}dd;
+            }}
+        """)
+        cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_button)
+        
+        self.start_button = QPushButton("Start Enrollment")
+        self.start_button.setFont(QFont("Arial", 15))  # Slightly smaller
+        self.start_button.setMinimumSize(170, 45)  # Slightly smaller
+        self.start_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {self.colors['success']};
+                color: {self.colors['light']};
+                border-radius: 10px;
+                border: none;
+                padding: 8px 16px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.colors['success']}dd;
+            }}
+            QPushButton:disabled {{
+                background-color: {self.colors['gray']};
+                color: {self.colors['light']}aa;
+            }}
+        """)
+        self.start_button.clicked.connect(self.start_enrollment)
+        button_layout.addWidget(self.start_button)
+        
+        layout.addLayout(button_layout)
+    
+    def update_finger_guide(self, state: str):
+        """Update the finger placement visual guide."""
+        guides = {
+            "ready": "🖐️\nReady to scan",
+            "scanning": "👆\nScanning...",
+            "good": "✅\nSample captured!",
+            "bad": "❌\nTry again",
+            "lift": "↗️\nLift finger"
+        }
+        
+        colors = {
+            "ready": self.colors['primary'],
+            "scanning": self.colors['warning'], 
+            "good": self.colors['success'],
+            "bad": self.colors['danger'],
+            "lift": self.colors['light']
+        }
+        
+        text = guides.get(state, guides["ready"])
+        color = colors.get(state, self.colors['primary'])
+        
+        self.finger_guide.setText(text)
+        self.finger_guide.setStyleSheet(f"color: {color};")
+    
+    def update_ui_for_step(self, step: int):
+        """Update UI for current enrollment step."""
+        self.current_step = step
+        
+        if step == 0:
+            self.progress_label.setText("Ready to start")
+            self.status_label.setText("")
+            self.status_label.setStyleSheet(f"color: {self.colors['light']};")
+            self.instruction_label.setText("Click 'Start Enrollment' to begin")
+            self.start_button.setText("Start Enrollment")
+            self.start_button.setEnabled(True)
+        
+        elif step > 0 and step <= self.total_samples:
+            self.progress_label.setText(f"Capturing sample {step} of {self.total_samples}")
+            self.sample_counter.setText(f"{step-1} of {self.total_samples} samples captured")
+            self.progress_bar.setValue(step-1)
+            self.instruction_label.setText("Place your finger on the scanner")
+            self.start_button.setText("Scanning...")
+            self.start_button.setEnabled(False)
+            self.status_label.setStyleSheet(f"color: {self.colors['light']};")
+            
+        else:
+            # Completion state
+            self.progress_label.setText("Enrollment completed!")
+            self.status_label.setText("✅ Fingerprint enrolled successfully")
+            self.status_label.setStyleSheet(f"color: {self.colors['success']};")
+            self.sample_counter.setText(f"{self.total_samples} of {self.total_samples} samples captured")
+            self.progress_bar.setValue(self.total_samples)
+            self.instruction_label.setText("You can now use fingerprint authentication")
+            self.start_button.setText("Finish")
+            self.start_button.setEnabled(True)
+    
+    def initialize_fingerprint_manager(self):
+        """Initialize the fingerprint manager."""
+        try:
+            from fingerprint_manager import FingerprintManager
+            self.fingerprint_manager = FingerprintManager()
+            success, msg = self.fingerprint_manager.initialize_device()
+            
+            if not success:
+                self.status_label.setText("❌ Fingerprint device not available")
+                self.status_label.setStyleSheet(f"color: {self.colors['danger']};")
+                self.start_button.setEnabled(False)
+                
+        except Exception as e:
+            self.status_label.setText(f"❌ Error: {str(e)}")
+            self.status_label.setStyleSheet(f"color: {self.colors['danger']};")
+            self.start_button.setEnabled(False)
+    
+    def start_enrollment(self):
+        """Start the fingerprint enrollment process."""
+        if self.current_step == 0:
+            self.update_ui_for_step(1)
+            self.update_finger_guide("ready")
+            self.start_actual_enrollment()
+        elif self.current_step > self.total_samples:
+            self.accept()
+    
+    def start_actual_enrollment(self):
+        """Start the actual fingerprint enrollment."""
+        try:
+            self.update_finger_guide("scanning")
+            self.status_label.setText("Initializing enrollment...")
+            
+            from fingerprint_manager import FingerprintThread
+            from biometric_enrollment import BiometricProfileEnrollment
+            
+            # Create a custom enrollment thread that provides sample-by-sample updates
+            class EnhancedEnrollmentThread(FingerprintThread):
+                sample_progress = pyqtSignal(int, int, str, float)  # current_sample, total_samples, status, quality
+                
+                def run(self):
+                    """Run enrollment with sample-by-sample feedback."""
+                    try:
+                        # Get the enrollment system
+                        enrollment_system = self.manager.enrollment_system
+                        
+                        if not enrollment_system.device.connected:
+                            self.finished.emit(False, "Device not connected", {})
+                            return
+                            
+                        # Check if already enrolled
+                        if self.manager._is_employee_enrolled(self.kwargs['employee_id']):
+                            self.finished.emit(False, f"Employee {self.kwargs['employee_id']} already enrolled", {})
+                            return
+                        
+                        # Custom enrollment with live feedback
+                        staff_code = self.kwargs['employee_id']
+                        staff_name = self.kwargs['employee_name']
+                        samples = []
+                        quality_scores = []
+                        required_samples = 5
+                        
+                        self.sample_progress.emit(0, required_samples, "Starting enrollment...", 0.0)
+                        
+                        for sample_num in range(1, required_samples + 1):
+                            self.sample_progress.emit(sample_num, required_samples, f"SAMPLE {sample_num}/{required_samples}", 0.0)
+                            self.sample_progress.emit(sample_num, required_samples, f"Please place your finger on the scanner for sample {sample_num}", 0.0)
+                            
+                            # Capture fingerprint sample
+                            capture_start = time.time()
+                            fingerprint_image = enrollment_system.device.capture_fingerprint()
+                            capture_time = time.time() - capture_start
+                            
+                            if fingerprint_image is None:
+                                self.sample_progress.emit(sample_num, required_samples, f"Failed to capture sample {sample_num}. Retrying...", 0.0)
+                                sample_num -= 1  # Retry this sample
+                                continue
+                            
+                            # Analyze quality
+                            quality_score = enrollment_system._calculate_quality_score(fingerprint_image)
+                            
+                            if quality_score < enrollment_system.quality_threshold:
+                                self.sample_progress.emit(sample_num, required_samples, f"Sample quality too low ({quality_score:.3f}). Please try again.", quality_score)
+                                sample_num -= 1  # Retry this sample
+                                continue
+                            
+                            # Check consistency with previous samples
+                            if samples and not enrollment_system._check_sample_consistency(fingerprint_image, samples):
+                                self.sample_progress.emit(sample_num, required_samples, "Sample not consistent. Please try again.", quality_score)
+                                sample_num -= 1  # Retry this sample
+                                continue
+                            
+                            # Extract minutiae
+                            minutiae = enrollment_system._extract_minutiae(fingerprint_image)
+                            
+                            # Store successful sample
+                            sample_data = {
+                                'image': fingerprint_image,
+                                'quality': quality_score,
+                                'minutiae': minutiae,
+                                'capture_time': capture_time,
+                                'timestamp': datetime.now().isoformat()
+                            }
+                            
+                            samples.append(sample_data)
+                            quality_scores.append(quality_score)
+                            
+                            self.sample_progress.emit(sample_num, required_samples, f"✓ Sample {sample_num} captured successfully (Quality: {quality_score:.3f})", quality_score)
+                            
+                            if sample_num < required_samples:
+                                self.sample_progress.emit(sample_num, required_samples, "Please lift your finger and place it again for the next sample...", quality_score)
+                                time.sleep(2)  # Brief pause between samples
+                        
+                        # Build and store profile
+                        if len(samples) >= required_samples:
+                            self.sample_progress.emit(required_samples, required_samples, "Building biometric profile...", 0.0)
+                            
+                            # Build comprehensive biometric profile
+                            profile_data = enrollment_system._build_biometric_profile(samples)
+                            
+                            # Calculate enrollment statistics
+                            enrollment_stats = {
+                                'staff_code': staff_code,
+                                'staff_name': staff_name,
+                                'samples_captured': len(samples),
+                                'average_quality': np.mean(quality_scores),
+                                'min_quality': np.min(quality_scores),
+                                'max_quality': np.max(quality_scores),
+                                'minutiae_count': np.mean([len(s['minutiae']) for s in samples])
+                            }
+                            
+                            # Store profile
+                            success = enrollment_system._store_biometric_profile(
+                                staff_code, staff_name, profile_data, 
+                                quality_scores, samples, enrollment_stats
+                            )
+                            
+                            if success:
+                                # Link to main database
+                                biometric_user_id = f"emp_{staff_code}_{int(time.time())}"
+                                self.manager._link_employee_to_biometric(staff_code, staff_name, biometric_user_id)
+                                
+                                message = f"🎉 Biometric profile enrolled successfully for {staff_name}\n   Average Quality: {enrollment_stats['average_quality']:.3f}\n   Total Samples: {len(samples)}\n   Minutiae Count: {enrollment_stats['minutiae_count']:.1f}"
+                                self.finished.emit(True, message, enrollment_stats)
+                            else:
+                                self.finished.emit(False, "Failed to store biometric profile", {})
+                        else:
+                            self.finished.emit(False, f"Insufficient samples captured ({len(samples)}/{required_samples})", {})
+                    
+                    except Exception as e:
+                        self.finished.emit(False, f"Enrollment error: {str(e)}", {})
+            
+            # Create and start enhanced enrollment thread
+            from PyQt6.QtCore import pyqtSignal
+            import numpy as np
+            from datetime import datetime
+            import time
+            
+            self.enrollment_thread = EnhancedEnrollmentThread(
+                self.fingerprint_manager,
+                'enroll',
+                employee_id=self.staff_code,
+                employee_name=self.staff_name
+            )
+            
+            # Connect signals
+            self.enrollment_thread.finished.connect(self.on_enrollment_complete)
+            self.enrollment_thread.sample_progress.connect(self.on_sample_progress)
+            self.enrollment_thread.start()
+            
+        except Exception as e:
+            self.status_label.setText(f"❌ Error: {str(e)}")
+            self.status_label.setStyleSheet(f"color: {self.colors['danger']};")
+    
+    def on_sample_progress(self, current_sample: int, total_samples: int, status: str, quality: float):
+        """Handle sample-by-sample progress updates."""
+        if current_sample > 0 and current_sample <= total_samples:
+            # Update progress
+            self.progress_label.setText(f"Capturing sample {current_sample} of {total_samples}")
+            self.sample_counter.setText(f"{current_sample-1} of {total_samples} samples captured")
+            self.progress_bar.setValue(current_sample-1)
+            
+            # Update status with detailed feedback
+            if "✓" in status:
+                self.status_label.setText(status)
+                self.status_label.setStyleSheet(f"color: {self.colors['success']};")
+                self.update_finger_guide("good")
+                # Brief pause to show success
+                QTimer.singleShot(1000, lambda: self.update_finger_guide("lift"))
+            elif "Failed" in status or "quality too low" in status or "not consistent" in status:
+                self.status_label.setText(status)
+                self.status_label.setStyleSheet(f"color: {self.colors['danger']};")
+                self.update_finger_guide("bad")
+            elif "Please place" in status:
+                self.status_label.setText(status)
+                self.status_label.setStyleSheet(f"color: {self.colors['light']};")
+                self.update_finger_guide("ready")
+            elif "lift your finger" in status:
+                self.status_label.setText(status)
+                self.status_label.setStyleSheet(f"color: {self.colors['light']};")
+                self.update_finger_guide("lift")
+            elif "SAMPLE" in status:
+                self.status_label.setText(status)
+                self.status_label.setStyleSheet(f"color: {self.colors['primary']};")
+                self.update_finger_guide("scanning")
+            else:
+                self.status_label.setText(status)
+                self.status_label.setStyleSheet(f"color: {self.colors['light']};")
+        else:
+            # General status update
+            self.status_label.setText(status)
+            self.status_label.setStyleSheet(f"color: {self.colors['light']};")
+
+    def on_enrollment_complete(self, success: bool, message: str, stats: dict):
+        """Handle enrollment completion."""
+        if success:
+            self.current_step = self.total_samples + 1
+            self.update_ui_for_step(self.current_step)
+            self.update_finger_guide("good")
+        else:
+            self.status_label.setText(f"❌ Enrollment failed: {message}")
+            self.status_label.setStyleSheet(f"color: {self.colors['danger']};")
+            self.update_finger_guide("bad")
+            self.start_button.setText("Retry")
+            self.start_button.setEnabled(True)
+
+
 if __name__ == "__main__":
     get_os_specific_path()
 
@@ -246,8 +731,8 @@ class StaffClockInOutSystem(QMainWindow):
         # Ensure visitors table exists
         self.ensure_visitors_table()
 
-        self.scanner_active = False  # Track if the scanner is active
-        self.cap = None  # Store camera object
+
+
 
         self.isWindowed = False
         # Paths
@@ -264,13 +749,18 @@ class StaffClockInOutSystem(QMainWindow):
         self.realtime_backup_path = os.path.join(os.path.dirname(__file__), "Backups", "realtime_backup.db")
         self.initialize_realtime_backup()
         
-        # Initialize fingerprint system
+        # Initialize optimized fingerprint system
         self.fingerprint_manager = FingerprintManager(self.database_path)
-        self.fingerprint_device_available = self.fingerprint_manager.is_device_available()
-        if self.fingerprint_device_available:
-            logging.info("Fingerprint device detected and initialized")
+        
+        # Properly initialize the fingerprint device
+        fingerprint_init_success, fingerprint_init_msg = self.fingerprint_manager.initialize_device()
+        
+        if fingerprint_init_success:
+            self.fingerprint_device_available = True
+            logging.info(f"Fast fingerprint device ready: {fingerprint_init_msg}")
         else:
-            logging.warning("Fingerprint device not detected - using PIN authentication only")
+            self.fingerprint_device_available = False
+            logging.warning(f"Fingerprint device not available: {fingerprint_init_msg}")
 
         self.daily_backup_thread = DailyBackUp(
             backup_folder=os.path.join(os.path.dirname(__file__), "Backups"),
@@ -285,6 +775,11 @@ class StaffClockInOutSystem(QMainWindow):
 
         self.break_start_time = None  # Tracks when the break started
         self.on_break = False  # Tracks whether the staff is on break
+        self.admin_was_open = False  # Track admin window state
+        
+        # Continuous fingerprint scanning
+        self.continuous_fingerprint_active = False
+        self.fingerprint_scan_timer = None
 
         # UI Components
         self.clock_timer = QTimer(self)
@@ -303,6 +798,9 @@ class StaffClockInOutSystem(QMainWindow):
         self.timesheet_checker = TimesheetCheckerThread(settingsFilePath)
         self.timesheet_checker.timesheet_generated.connect(self.handle_timesheet_generated)
         self.timesheet_checker.start()
+        
+        # Fingerprint scanning is now manual via button - no automatic scanning
+        logging.info("StaffClockInOutSystem initialization complete")
 
     def initialize_realtime_backup(self):
         """Initialize the real-time backup database."""
@@ -505,6 +1003,11 @@ class StaffClockInOutSystem(QMainWindow):
     def closeEvent(self, event):
         # Log shutdown
         logger.log_shutdown()
+        
+        # Stop continuous fingerprint scanning
+        if hasattr(self, 'continuous_fingerprint_active') and self.continuous_fingerprint_active:
+            self.stop_continuous_fingerprint_scanning()
+        
         # Ensure the thread stops when the app closes
         self.daily_backup_thread.stop()
         self.daily_backup_thread.wait()
@@ -669,25 +1172,76 @@ class StaffClockInOutSystem(QMainWindow):
         clock_buttons_layout = QHBoxLayout()
         clock_buttons_layout.setSpacing(20)
 
-        # QR Scan Button
-        self.qr_scan_button = self.create_styled_button(
-            "Scan QR Code",
-            self.COLORS['primary'],
-            lambda: self.scan_qr_code()
-        )
-        button_layout.addWidget(self.qr_scan_button)
-
         # Fingerprint Scan Button
-        fingerprint_color = self.COLORS['success'] if self.fingerprint_device_available else self.COLORS['gray']
-        fingerprint_text = "Scan Fingerprint" if self.fingerprint_device_available else "Fingerprint Unavailable"
-        self.fingerprint_scan_button = self.create_styled_button(
-            fingerprint_text,
-            fingerprint_color,
-            lambda: self.scan_fingerprint()
-        )
-        if not self.fingerprint_device_available:
-            self.fingerprint_scan_button.setEnabled(False)
-        button_layout.addWidget(self.fingerprint_scan_button)
+        if self.fingerprint_device_available:
+            self.fingerprint_scan_button = QPushButton("🔍 Scan Fingerprint")
+            self.fingerprint_scan_button.setFont(QFont("Inter", 16, QFont.Weight.Medium))
+            self.fingerprint_scan_button.setMinimumSize(300, 55)
+            self.fingerprint_scan_button.setStyleSheet(f"""
+                QPushButton {{
+                    background: qlineargradient(
+                        x1: 0, y1: 0, x2: 0, y2: 1,
+                        stop: 0 {self.COLORS['primary']},
+                        stop: 1 {self.COLORS['primary']}cc
+                    );
+                    color: white;
+                    border: none;
+                    border-radius: 12px;
+                    padding: 15px;
+                    margin: 10px;
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{
+                    background: qlineargradient(
+                        x1: 0, y1: 0, x2: 0, y2: 1,
+                        stop: 0 {self.COLORS['primary']}dd,
+                        stop: 1 {self.COLORS['primary']}aa
+                    );
+                    transform: translateY(-2px);
+                }}
+                QPushButton:pressed {{
+                    background: {self.COLORS['primary']}88;
+                    transform: translateY(0px);
+                }}
+                QPushButton:disabled {{
+                    background: {self.COLORS['gray']};
+                    color: {self.COLORS['text']}88;
+                }}
+            """)
+            self.fingerprint_scan_button.clicked.connect(self.start_fingerprint_scan)
+            button_layout.addWidget(self.fingerprint_scan_button)
+            
+            # Status label for feedback during scanning
+            self.fingerprint_status_label = QLabel("Ready to scan")
+            self.fingerprint_status_label.setFont(QFont("Inter", 11))
+            self.fingerprint_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.fingerprint_status_label.setStyleSheet(f"""
+                QLabel {{
+                    color: {self.COLORS['text']};
+                    background-color: {self.COLORS['light']};
+                    border: 1px solid {self.COLORS['border']};
+                    border-radius: 8px;
+                    padding: 8px;
+                    margin: 5px 10px;
+                }}
+            """)
+            button_layout.addWidget(self.fingerprint_status_label)
+        else:
+            # Show unavailable status if no fingerprint device
+            fingerprint_unavailable_label = QLabel("❌ Fingerprint Scanner: Unavailable")
+            fingerprint_unavailable_label.setFont(QFont("Inter", 12))
+            fingerprint_unavailable_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            fingerprint_unavailable_label.setStyleSheet(f"""
+                QLabel {{
+                    color: {self.COLORS['gray']};
+                    background-color: {self.COLORS['light']};
+                    border: 2px solid {self.COLORS['gray']};
+                    border-radius: 10px;
+                    padding: 15px;
+                    margin: 10px;
+                }}
+            """)
+            button_layout.addWidget(fingerprint_unavailable_label)
 
         # Clock In Button
         self.clock_in_button = self.create_styled_button(
@@ -775,149 +1329,169 @@ class StaffClockInOutSystem(QMainWindow):
         return footer
 
 
-    def generate_qr_code(self, staff_code):
-        """Generate a QR code for the given staff code and save it, then show a dialog."""
-        qr_folder = os.path.join(os.path.dirname(__file__), "QR_Codes")
-        os.makedirs(qr_folder, exist_ok=True)
-        qr_code_file = os.path.join(qr_folder, f"{staff_code}.png")
 
-        # Generate QR Code
-        qr = qrcode.QRCode(version=1, box_size=10, border=4)
-        qr.add_data(staff_code)
-        qr.make(fit=True)
-        img = qr.make_image(fill="black", back_color="white")
-        img.save(qr_code_file)
 
-        logging.info(f"Generated QR code for staff code {staff_code} at {qr_code_file}")
-
-        # Show QR Code dialog
-        self.show_qr_code_dialog(qr_code_file)
-
-    def show_qr_code_dialog(self, qr_code_file):
-        """Show a dialog with the QR code image."""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("QR Code")
-        dialog.setFixedSize(400, 400)
-
-        layout = QVBoxLayout(dialog)
-
-        qr_label = QLabel(dialog)
-        pixmap = QPixmap(qr_code_file)
-        qr_label.setPixmap(pixmap)
-        qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        close_button = QPushButton("Close", dialog)
-        close_button.clicked.connect(dialog.close)
-
-        layout.addWidget(qr_label)
-        layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        dialog.setLayout(layout)
-        dialog.exec()
-
-    def scan_qr_code(self):
-        """Start/stop QR code scanning based on the button state."""
-        if self.scanner_active:
-            self.stop_scanner()  # Stop scanning if already active
-            self.qr_scan_button.setText("Scan QR Code")
-            return
-
-        self.qr_scan_button.setText("Stop Scan")
-        self.scanner_active = True
-        self.cap = cv2.VideoCapture(0)  # Open the default camera
-
-        detector = cv2.QRCodeDetector()
-
-        logging.info("Camera started for QR scanning...")
-
-        # Create or show the QLabel for the camera preview
-        if not hasattr(self, "camera_preview"):
-            self.camera_preview = QLabel(self)
-            self.camera_preview.setFixedSize(300, 300)  # Set preview box size
-            self.camera_preview.setStyleSheet("border: 2px solid white; background-color: black;")
-            self.camera_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.central_widget.layout().addWidget(self.camera_preview)
-
-        self.camera_preview.setScaledContents(False)  # Preserve aspect ratio
-        self.camera_preview.show()  # Show the preview box
-
-        def run_scanner():
-            while self.cap.isOpened() and self.scanner_active:
-                ret, frame = self.cap.read()
-                if not ret:
-                    break
-
-                # Get QLabel's size and calculate the resized frame dimensions
-                label_width = self.camera_preview.width()
-                label_height = self.camera_preview.height()
-                frame_height, frame_width = frame.shape[:2]
-                aspect_ratio = frame_width / frame_height
-
-                # Calculate new dimensions while preserving aspect ratio
-                if label_width / label_height > aspect_ratio:
-                    new_height = label_height
-                    new_width = int(aspect_ratio * label_height)
-                else:
-                    new_width = label_width
-                    new_height = int(label_width / aspect_ratio)
-
-                resized_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_AREA)
-
-                # Convert to RGB and display the frame
-                rgb_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
-                q_img = QImage(rgb_frame.data, new_width, new_height, QImage.Format.Format_RGB888)
-                pixmap = QPixmap.fromImage(q_img)
-
-                self.camera_preview.setPixmap(pixmap)
-
-                # Detect and decode QR Code
-                data, _, _ = detector.detectAndDecode(frame)
-                if data:
-                    logging.info(f"QR Code detected: {data}")
-                    self.staff_code_entry.setText(data)  # Automatically fill the staff code entry
-                    break
-
-            self.stop_scanner()
-
-        Thread(target=run_scanner, daemon=True).start()
-
-    def stop_scanner(self):
-        """Stop the QR scanner and hide the camera preview."""
-        if self.cap:
-            self.cap.release()
-        self.scanner_active = False
-        if hasattr(self, "camera_preview"):
-            self.camera_preview.clear()  # Clear the video feed
-            self.camera_preview.hide()  # Hide the QLabel
-        self.qr_scan_button.setText("Scan QR Code")
-        logging.info("Camera stopped for QR scanning.")
-
-    def scan_fingerprint(self):
-        """Scan fingerprint for authentication."""
+    def start_fingerprint_scan(self):
+        """Start fingerprint scanning when button is clicked."""
         if not self.fingerprint_device_available:
-            self.msg("Fingerprint device not available.", "warning", "Error")
             return
         
-        # Show scanning message
-        self.msg("Place your finger on the scanner...", "info", "Scanning")
+        # Disable the button during scanning
+        self.fingerprint_scan_button.setEnabled(False)
+        self.fingerprint_scan_button.setText("🔄 Scanning...")
         
-        # Perform fingerprint authentication
+        # Update status
+        self.fingerprint_status_label.setText("👆 Place finger on scanner")
+        self.fingerprint_status_label.setStyleSheet(f"""
+            QLabel {{
+                color: {self.COLORS['warning']};
+                background-color: {self.COLORS['light']};
+                border: 1px solid {self.COLORS['warning']};
+                border-radius: 8px;
+                padding: 8px;
+                margin: 5px 10px;
+            }}
+        """)
+        
+        # Start the fingerprint authentication
+        self.perform_fingerprint_authentication()
+        
+        logging.info("Fingerprint scan initiated by user")
+    
+    def reset_fingerprint_ui(self):
+        """Reset the fingerprint UI to ready state."""
+        if hasattr(self, 'fingerprint_scan_button'):
+            self.fingerprint_scan_button.setEnabled(True)
+            self.fingerprint_scan_button.setText("🔍 Scan Fingerprint")
+        
+        if hasattr(self, 'fingerprint_status_label'):
+            self.fingerprint_status_label.setText("Ready to scan")
+            self.fingerprint_status_label.setStyleSheet(f"""
+                QLabel {{
+                    color: {self.COLORS['text']};
+                    background-color: {self.COLORS['light']};
+                    border: 1px solid {self.COLORS['border']};
+                    border-radius: 8px;
+                    padding: 8px;
+                    margin: 5px 10px;
+                }}
+            """)
+    
+    
+    
+    def perform_fingerprint_authentication(self):
+        """Perform actual fingerprint authentication when finger is detected."""
         try:
-            staff_code, message = self.fingerprint_manager.authenticate_fingerprint()
+            from fingerprint_manager import FingerprintThread
             
-            if staff_code:
-                # Fingerprint recognized
+            # Full authentication scan with normal timeout
+            self.fingerprint_thread = FingerprintThread(
+                self.fingerprint_manager, 
+                'authenticate',
+                timeout=3  # Normal timeout for actual authentication
+            )
+            
+            # Connect completion signal
+            self.fingerprint_thread.finished.connect(self._on_fingerprint_authentication_result)
+            self.fingerprint_thread.start()
+            
+        except Exception as e:
+            logging.error(f"Fingerprint authentication error: {e}")
+            # Resume finger detection
+            QTimer.singleShot(1000, self.start_finger_detection_mode)
+    
+    def _on_fingerprint_authentication_result(self, success: bool, message: str, data: dict):
+        """Handle fingerprint authentication result."""
+        try:
+            if success and data.get('employee_id'):
+                staff_code = data['employee_id']
+                
+                # Auto-fill staff code
                 self.staff_code_entry.setText(staff_code)
-                self.msg(f"Fingerprint recognized: {message}", "info", "Success")
-                logging.info(f"Fingerprint authentication successful for: {staff_code}")
+                
+                # Update status to show recognition
+                self.fingerprint_status_label.setText(f"✅ Recognized: {staff_code}")
+                self.fingerprint_status_label.setStyleSheet(f"""
+                    QLabel {{
+                        color: {self.COLORS['success']};
+                        background-color: {self.COLORS['light']};
+                        border: 1px solid {self.COLORS['success']};
+                        border-radius: 8px;
+                        padding: 8px;
+                        margin: 5px 10px;
+                    }}
+                """)
+                
+                # Show success message
+                self.msg(f"Fingerprint recognized: {staff_code}", "info", "Welcome")
+                logging.info(f"Fingerprint authentication successful: {staff_code}")
+                
+                # Reset UI after 3 seconds
+                QTimer.singleShot(3000, self.reset_fingerprint_ui)
+                
+            elif "No fingerprint detected" in message:
+                # No finger was placed
+                self.fingerprint_status_label.setText("⚠️ No finger detected")
+                self.fingerprint_status_label.setStyleSheet(f"""
+                    QLabel {{
+                        color: {self.COLORS['warning']};
+                        background-color: {self.COLORS['light']};
+                        border: 1px solid {self.COLORS['warning']};
+                        border-radius: 8px;
+                        padding: 8px;
+                        margin: 5px 10px;
+                    }}
+                """)
+                
+                # Reset UI after 2 seconds
+                QTimer.singleShot(2000, self.reset_fingerprint_ui)
+                
+            elif ("Authentication failed" in message or 
+                  "Fingerprint verification failed" in message or
+                  "not recognized" in message.lower()):
+                # Fingerprint was detected but not recognized
+                self.fingerprint_status_label.setText("❌ Not recognized")
+                self.fingerprint_status_label.setStyleSheet(f"""
+                    QLabel {{
+                        color: {self.COLORS['danger']};
+                        background-color: {self.COLORS['light']};
+                        border: 1px solid {self.COLORS['danger']};
+                        border-radius: 8px;
+                        padding: 8px;
+                        margin: 5px 10px;
+                    }}
+                """)
+                
+                # Show debug popup
+                self.msg(f"Fingerprint scanned but not recognized: {message}", "warning", "Debug Info")
+                logging.warning(f"Fingerprint not recognized: {message}")
+                
+                # Reset UI after 3 seconds
+                QTimer.singleShot(3000, self.reset_fingerprint_ui)
+                
             else:
-                # Fingerprint not recognized
-                self.msg(f"Authentication failed: {message}", "warning", "Error")
-                logging.warning(f"Fingerprint authentication failed: {message}")
+                # Other errors
+                self.fingerprint_status_label.setText(f"❌ Error: {message}")
+                self.fingerprint_status_label.setStyleSheet(f"""
+                    QLabel {{
+                        color: {self.COLORS['danger']};
+                        background-color: {self.COLORS['light']};
+                        border: 1px solid {self.COLORS['danger']};
+                        border-radius: 8px;
+                        padding: 8px;
+                        margin: 5px 10px;
+                    }}
+                """)
+                
+                logging.warning(f"Fingerprint authentication error: {message}")
+                
+                # Reset UI after 2 seconds
+                QTimer.singleShot(2000, self.reset_fingerprint_ui)
                 
         except Exception as e:
-            self.msg(f"Fingerprint scan error: {str(e)}", "warning", "Error")
-            logging.error(f"Fingerprint scan error: {e}")
+            logging.error(f"Error processing fingerprint authentication result: {e}")
+            # Reset UI
+            QTimer.singleShot(1000, self.reset_fingerprint_ui)
 
     def clock_action(self, action, staff_code):
         logger.log_system_event("Clock Action", f"Processing {action} for staff code {staff_code}")
@@ -2234,7 +2808,7 @@ class StaffClockInOutSystem(QMainWindow):
                 
                 self.msg(f"Staff member {staff_name} added with code {staff_code}.", "info", "Success")
                 logging.info(f"Staff member {staff_name} added with code {staff_code} and role {staff_role}.")
-                self.generate_qr_code(staff_code)
+
                 break
             except sqlite3.Error as e:
                 self.msg(f"Database error occurred: {e}", "warning", "Error")
@@ -3598,13 +4172,28 @@ Archive Location: {archive_path}"""
         try:
             conn = sqlite3.connect(self.database_path)
             cursor = conn.cursor()
-            cursor.execute('''
-                SELECT code, name, fingerprint_enrolled 
-                FROM staff 
-                ORDER BY name
-            ''')
-            staff_data = cursor.fetchall()
+            
+            # First get all staff
+            cursor.execute('SELECT code, name FROM staff ORDER BY name')
+            staff_list = cursor.fetchall()
             conn.close()
+            
+            # Then check enrollment status in biometric profiles database
+            staff_data = []
+            for staff_code, staff_name in staff_list:
+                try:
+                    # Check if enrolled in biometric profiles database
+                    bio_conn = sqlite3.connect("biometric_profiles.db")
+                    bio_cursor = bio_conn.cursor()
+                    bio_cursor.execute("SELECT COUNT(*) FROM biometric_profiles WHERE staff_code = ?", (staff_code,))
+                    is_enrolled = bio_cursor.fetchone()[0] > 0
+                    bio_conn.close()
+                    
+                    staff_data.append((staff_code, staff_name, 1 if is_enrolled else 0))
+                except Exception as bio_e:
+                    # If there's an error checking biometric DB, assume not enrolled
+                    staff_data.append((staff_code, staff_name, 0))
+                    
         except Exception as e:
             self.msg(f"Error loading staff data: {e}", "warning", "Error")
             staff_data = []
@@ -3689,34 +4278,26 @@ Archive Location: {archive_path}"""
         fingerprint_dialog.exec()
 
     def enroll_staff_fingerprint(self, staff_code, staff_name, parent_dialog):
-        """Enroll fingerprint for a staff member."""
+        """Enroll fingerprint for a staff member using built-in UI."""
         try:
             if not self.fingerprint_device_available:
                 self.msg("Fingerprint device not available.", "warning", "Error")
                 return
 
-            # Show confirmation dialog
-            reply = QMessageBox.question(
-                parent_dialog,
-                "Enroll Fingerprint",
-                f"Ready to enroll fingerprint for {staff_name}.\n\nPlace finger on the scanner when ready.",
-                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
-                QMessageBox.StandardButton.Ok
-            )
+            # Show the built-in enrollment dialog
+            dialog = FingerprintEnrollmentDialog(staff_code, staff_name, parent_dialog)
+            result = dialog.exec()
             
-            if reply == QMessageBox.StandardButton.Ok:
-                # Enroll fingerprint
-                success, message = self.fingerprint_manager.enroll_fingerprint(staff_code)
+            if result == QDialog.DialogCode.Accepted:
+                self.msg(f"Fingerprint enrolled successfully for {staff_name}!", "info", "Success")
+                logging.info(f"Fingerprint enrolled for {staff_name} ({staff_code})")
                 
-                if success:
-                    self.msg(f"Fingerprint enrolled successfully for {staff_name}.", "info", "Success")
-                    logging.info(f"Fingerprint enrolled for {staff_name} ({staff_code})")
-                    
-                    # Refresh the dialog
-                    parent_dialog.close()
-                    self.open_fingerprint_management()
-                else:
-                    self.msg(f"Fingerprint enrollment failed: {message}", "warning", "Error")
+                # Refresh the dialog
+                parent_dialog.close()
+                self.open_fingerprint_management()
+            else:
+                # User cancelled or enrollment failed
+                logging.info(f"Fingerprint enrollment cancelled for {staff_name} ({staff_code})")
                     
         except Exception as e:
             self.msg(f"Error enrolling fingerprint: {str(e)}", "warning", "Error")
@@ -3735,7 +4316,7 @@ Archive Location: {archive_path}"""
             )
             
             if reply == QMessageBox.StandardButton.Yes:
-                success, message = self.fingerprint_manager.remove_fingerprint(staff_code)
+                success, message = self.fingerprint_manager.remove_employee_enrollment(staff_code)
                 
                 if success:
                     self.msg(f"Fingerprint removed for {staff_name}.", "info", "Success")

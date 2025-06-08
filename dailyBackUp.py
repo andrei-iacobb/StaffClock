@@ -60,8 +60,7 @@ class DailyBackUp(QThread):
                 # Add ProgramData folder
                 self.add_folder_to_zip(backup_zip, "ProgramData")
 
-                # Add QR_Codes folder
-                self.add_folder_to_zip(backup_zip, "QR_Codes")
+                
 
                 # Add Timesheets folder
                 self.add_folder_to_zip(backup_zip, "Timesheets")

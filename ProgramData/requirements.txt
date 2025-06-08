@@ -2,8 +2,8 @@ PyQt6>=6.4.0
 PyQt6-WebEngine>=6.4.0
 keyboard>=0.13.5
 pyglet>=2.0.0
-qrcode>=7.3.1
+
 opencv-python>=4.7.0
-reportlab>=3.6.12
+reportlab>=4.4.1
 python-dateutil>=2.8.2
 Pillow>=9.3.0
