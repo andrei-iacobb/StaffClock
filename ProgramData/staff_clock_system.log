@@ -1,0 +1,340 @@
+2025-05-23 13:27:13 [INFO] logging_manager:52 - ==================================================
+2025-05-23 13:27:13 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-05-23 13:27:13 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-05-23 13:27:13 [INFO] logging_manager:55 - Startup time: 2025-05-23 13:27:13
+2025-05-23 13:27:13 [INFO] logging_manager:56 - ==================================================
+2025-05-23 13:27:13 [INFO] main:217 - Logging initialized on 2025-05-23
+2025-05-23 13:27:13 [WARNING] main:145 - No backup found for /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db. Generating default.
+2025-05-23 13:27:13 [INFO] main:197 - Default database created at /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-05-23 13:27:13 [WARNING] main:145 - No backup found for /Users/andreiiacob/StaffClock/ProgramData/settings.json. Generating default.
+2025-05-23 13:27:13 [INFO] main:209 - Default settings file created at /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-05-23 13:27:13 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-05-23 13:27:13 [INFO] logging_manager:52 - ==================================================
+2025-05-23 13:27:13 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-05-23 13:27:13 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-05-23 13:27:13 [INFO] logging_manager:55 - Startup time: 2025-05-23 13:27:13
+2025-05-23 13:27:13 [INFO] logging_manager:56 - ==================================================
+2025-05-23 13:27:13 [INFO] main:217 - Logging initialized on 2025-05-23
+2025-05-23 13:27:13 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-05-23 13:27:13 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-05-23 13:27:13 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-05-23 13:27:14 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-05-23 13:27:14 [INFO] main:2427 - Updated screen dimensions in settings: 1512x944
+2025-05-23 13:27:14 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x944
+2025-05-23 13:27:14 [INFO] main:241 - UI setup complete.
+2025-05-23 13:27:14 [INFO] main:304 - Visitors table checked/created successfully
+2025-05-23 13:27:14 [INFO] main:280 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-05-23 13:27:14 [INFO] main:283 - Initializing TimesheetCheckerThread...
+2025-05-23 13:27:20 [INFO] main:1112 - Opening admin tab
+2025-05-23 13:27:29 [INFO] logging_manager:52 - ==================================================
+2025-05-23 13:27:29 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-05-23 13:27:29 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-05-23 13:27:29 [INFO] logging_manager:55 - Startup time: 2025-05-23 13:27:29
+2025-05-23 13:27:29 [INFO] logging_manager:56 - ==================================================
+2025-05-23 13:27:29 [INFO] main:217 - Logging initialized on 2025-05-23
+2025-05-23 13:27:29 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-05-23 13:27:29 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-05-23 13:27:29 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-05-23 13:27:29 [INFO] logging_manager:52 - ==================================================
+2025-05-23 13:27:29 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-05-23 13:27:29 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-05-23 13:27:29 [INFO] logging_manager:55 - Startup time: 2025-05-23 13:27:29
+2025-05-23 13:27:29 [INFO] logging_manager:56 - ==================================================
+2025-05-23 13:27:29 [INFO] main:217 - Logging initialized on 2025-05-23
+2025-05-23 13:27:29 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-05-23 13:27:29 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-05-23 13:27:29 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-05-23 13:27:29 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-05-23 13:27:29 [INFO] main:2427 - Updated screen dimensions in settings: 1512x944
+2025-05-23 13:27:29 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x944
+2025-05-23 13:27:29 [INFO] main:241 - UI setup complete.
+2025-05-23 13:27:29 [INFO] main:304 - Visitors table checked/created successfully
+2025-05-23 13:27:29 [INFO] main:280 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-05-23 13:27:29 [INFO] main:283 - Initializing TimesheetCheckerThread...
+2025-05-23 13:27:55 [INFO] main:1112 - Opening admin tab
+2025-05-23 13:28:02 [ERROR] main:2124 - Error: Invalid staff name ''
+2025-05-23 13:28:10 [ERROR] main:2136 - Staff member 'andrei' not found.
+2025-05-23 13:28:28 [ERROR] main:2136 - Staff member 'iacob' not found.
+2025-05-23 13:30:30 [ERROR] main:1554 - Error: Invalid staff name ''
+2025-05-23 13:30:37 [ERROR] main:1565 - Staff member 'cristina' not found.
+2025-05-23 13:38:44 [INFO] main:1112 - Opening admin tab
+2025-05-23 13:38:48 [INFO] main:1112 - Opening admin tab
+2025-05-23 13:38:58 [INFO] main:1904 - Staff member andrei added with code 5805 and role engagement.
+2025-05-23 13:38:58 [INFO] main:577 - Generated QR code for staff code 5805 at /Users/andreiiacob/StaffClock/QR_Codes/5805.png
+2025-06-03 12:48:44 [INFO] logging_manager:52 - ==================================================
+2025-06-03 12:48:44 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-03 12:48:44 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-03 12:48:44 [INFO] logging_manager:55 - Startup time: 2025-06-03 12:48:44
+2025-06-03 12:48:44 [INFO] logging_manager:56 - ==================================================
+2025-06-03 12:48:44 [INFO] main:217 - Logging initialized on 2025-06-03
+2025-06-03 12:48:44 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-03 12:48:44 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-03 12:48:44 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-03 12:48:44 [INFO] logging_manager:52 - ==================================================
+2025-06-03 12:48:44 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-03 12:48:44 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-03 12:48:44 [INFO] logging_manager:55 - Startup time: 2025-06-03 12:48:44
+2025-06-03 12:48:44 [INFO] logging_manager:56 - ==================================================
+2025-06-03 12:48:44 [INFO] main:217 - Logging initialized on 2025-06-03
+2025-06-03 12:48:44 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-03 12:48:44 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-03 12:48:44 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-03 12:48:44 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-03 12:48:44 [INFO] main:2427 - Updated screen dimensions in settings: 1512x944
+2025-06-03 12:48:44 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x944
+2025-06-03 12:48:44 [INFO] main:241 - UI setup complete.
+2025-06-03 12:48:44 [INFO] main:304 - Visitors table checked/created successfully
+2025-06-03 12:48:44 [INFO] main:280 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-06-03 12:48:44 [INFO] main:283 - Initializing TimesheetCheckerThread...
+2025-06-03 12:48:52 [INFO] main:1112 - Opening admin tab
+2025-06-03 17:12:27 [INFO] logging_manager:52 - ==================================================
+2025-06-03 17:12:27 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-03 17:12:27 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-03 17:12:27 [INFO] logging_manager:55 - Startup time: 2025-06-03 17:12:27
+2025-06-03 17:12:27 [INFO] logging_manager:56 - ==================================================
+2025-06-03 17:12:27 [INFO] main:217 - Logging initialized on 2025-06-03
+2025-06-03 17:12:27 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-03 17:12:27 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-03 17:12:27 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-03 17:12:27 [INFO] logging_manager:52 - ==================================================
+2025-06-03 17:12:27 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-03 17:12:27 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-03 17:12:27 [INFO] logging_manager:55 - Startup time: 2025-06-03 17:12:27
+2025-06-03 17:12:27 [INFO] logging_manager:56 - ==================================================
+2025-06-03 17:12:27 [INFO] main:217 - Logging initialized on 2025-06-03
+2025-06-03 17:12:27 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-03 17:12:27 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-03 17:12:27 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-03 17:12:27 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-03 17:12:27 [INFO] main:2427 - Updated screen dimensions in settings: 1512x944
+2025-06-03 17:12:27 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x944
+2025-06-03 17:12:27 [INFO] main:241 - UI setup complete.
+2025-06-03 17:12:27 [INFO] main:304 - Visitors table checked/created successfully
+2025-06-03 17:12:28 [INFO] main:280 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944}
+2025-06-03 17:12:28 [INFO] main:283 - Initializing TimesheetCheckerThread...
+2025-06-03 17:12:36 [INFO] main:1112 - Opening admin tab
+2025-06-03 17:12:51 [INFO] main:1112 - Opening admin tab
+2025-06-03 17:13:01 [INFO] logging_manager:85 - System Event [Clock Action]: Processing in for staff code 5805
+2025-06-03 17:13:01 [INFO] logging_manager:81 - User Action: 5805 - Clock In - Clocked in at 17:13
+2025-06-03 17:13:48 [INFO] main:1112 - Opening admin tab
+2025-06-06 15:44:41 [INFO] logging_manager:52 - ==================================================
+2025-06-06 15:44:41 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-06 15:44:41 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-06 15:44:41 [INFO] logging_manager:55 - Startup time: 2025-06-06 15:44:41
+2025-06-06 15:44:41 [INFO] logging_manager:56 - ==================================================
+2025-06-06 15:44:41 [INFO] main:219 - Logging initialized on 2025-06-06
+2025-06-06 15:44:41 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-06 15:44:41 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-06 15:44:41 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-06 15:44:41 [INFO] logging_manager:52 - ==================================================
+2025-06-06 15:44:41 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-06 15:44:41 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-06 15:44:41 [INFO] logging_manager:55 - Startup time: 2025-06-06 15:44:41
+2025-06-06 15:44:41 [INFO] logging_manager:56 - ==================================================
+2025-06-06 15:44:41 [INFO] main:219 - Logging initialized on 2025-06-06
+2025-06-06 15:44:41 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-06 15:44:41 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-06 15:44:41 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-06 15:44:41 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-06 15:44:41 [INFO] main:2690 - Updated screen dimensions in settings: 1512x944
+2025-06-06 15:44:41 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x944
+2025-06-06 15:44:41 [INFO] main:243 - UI setup complete.
+2025-06-06 15:44:41 [INFO] main:483 - Visitors table checked/created successfully
+2025-06-06 15:44:41 [INFO] main:332 - Real-time backup database initialized successfully
+2025-06-06 15:44:41 [INFO] main:290 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944, 'admin_pin': '123456', 'exit_code': '654321'}
+2025-06-06 15:44:41 [INFO] main:293 - Initializing TimesheetCheckerThread...
+2025-06-06 15:44:45 [INFO] main:1370 - Opening admin tab
+2025-06-06 15:45:25 [INFO] main:1370 - Opening admin tab
+2025-06-07 19:26:44 [INFO] logging_manager:52 - ==================================================
+2025-06-07 19:26:44 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-07 19:26:44 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-07 19:26:44 [INFO] logging_manager:55 - Startup time: 2025-06-07 19:26:44
+2025-06-07 19:26:44 [INFO] logging_manager:56 - ==================================================
+2025-06-07 19:26:44 [INFO] main:219 - Logging initialized on 2025-06-07
+2025-06-07 19:26:44 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-07 19:26:44 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-07 19:26:44 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-07 19:26:44 [INFO] logging_manager:52 - ==================================================
+2025-06-07 19:26:44 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-07 19:26:44 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-07 19:26:44 [INFO] logging_manager:55 - Startup time: 2025-06-07 19:26:44
+2025-06-07 19:26:44 [INFO] logging_manager:56 - ==================================================
+2025-06-07 19:26:44 [INFO] main:219 - Logging initialized on 2025-06-07
+2025-06-07 19:26:44 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-07 19:26:44 [INFO] main:121 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-07 19:26:44 [INFO] main:95 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-07 19:26:44 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-07 19:26:44 [INFO] main:2710 - Updated screen dimensions in settings: 1512x944
+2025-06-07 19:26:44 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x944
+2025-06-07 19:26:44 [INFO] main:243 - UI setup complete.
+2025-06-07 19:26:44 [INFO] main:483 - Visitors table checked/created successfully
+2025-06-07 19:26:44 [INFO] main:332 - Real-time backup database initialized successfully
+2025-06-07 19:26:44 [INFO] main:290 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944, 'admin_pin': '123456', 'exit_code': '654321'}
+2025-06-07 19:26:44 [INFO] main:293 - Initializing TimesheetCheckerThread...
+2025-06-07 19:29:31 [INFO] logging_manager:52 - ==================================================
+2025-06-07 19:29:31 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-07 19:29:31 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-07 19:29:31 [INFO] logging_manager:55 - Startup time: 2025-06-07 19:29:31
+2025-06-07 19:29:31 [INFO] logging_manager:56 - ==================================================
+2025-06-07 19:29:31 [INFO] main:220 - Logging initialized on 2025-06-07
+2025-06-07 19:29:31 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-07 19:29:31 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-07 19:29:31 [INFO] main:96 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-07 19:29:31 [INFO] logging_manager:52 - ==================================================
+2025-06-07 19:29:31 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-07 19:29:31 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-07 19:29:31 [INFO] logging_manager:55 - Startup time: 2025-06-07 19:29:31
+2025-06-07 19:29:31 [INFO] logging_manager:56 - ==================================================
+2025-06-07 19:29:31 [INFO] main:220 - Logging initialized on 2025-06-07
+2025-06-07 19:29:31 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-07 19:29:31 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-07 19:29:31 [INFO] main:96 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-07 19:29:31 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-07 19:29:31 [INFO] main:2759 - Updated screen dimensions in settings: 1512x944
+2025-06-07 19:29:31 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x944
+2025-06-07 19:29:31 [INFO] main:244 - UI setup complete.
+2025-06-07 19:29:31 [INFO] main:492 - Visitors table checked/created successfully
+2025-06-07 19:29:31 [INFO] main:341 - Real-time backup database initialized successfully
+2025-06-07 19:29:31 [INFO] fingerprint_manager:42 - Added fingerprint_template column to staff table
+2025-06-07 19:29:31 [INFO] fingerprint_manager:46 - Added fingerprint_enrolled column to staff table
+2025-06-07 19:29:31 [INFO] fingerprint_manager:50 - Fingerprint database initialization complete
+2025-06-07 19:29:31 [INFO] main:271 - Fingerprint device detected and initialized
+2025-06-07 19:29:31 [INFO] main:299 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944, 'admin_pin': '123456', 'exit_code': '654321'}
+2025-06-07 19:29:31 [INFO] main:302 - Initializing TimesheetCheckerThread...
+2025-06-07 19:29:51 [INFO] main:1438 - Opening admin tab
+2025-06-07 19:30:22 [INFO] fingerprint_manager:223 - Fingerprint enrolled for staff code: 5805
+2025-06-07 19:30:25 [INFO] main:3713 - Fingerprint enrolled for andrei (5805)
+2025-06-07 19:30:29 [INFO] fingerprint_manager:301 - Fingerprint removed for staff code: 5805
+2025-06-07 19:30:30 [INFO] main:3742 - Fingerprint removed for andrei (5805)
+2025-06-07 19:30:36 [INFO] fingerprint_manager:223 - Fingerprint enrolled for staff code: 5805
+2025-06-07 19:30:38 [INFO] main:3713 - Fingerprint enrolled for andrei (5805)
+2025-06-07 19:30:40 [INFO] fingerprint_manager:301 - Fingerprint removed for staff code: 5805
+2025-06-07 19:30:43 [INFO] main:3742 - Fingerprint removed for andrei (5805)
+2025-06-07 19:35:29 [INFO] logging_manager:52 - ==================================================
+2025-06-07 19:35:29 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-07 19:35:29 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-07 19:35:29 [INFO] logging_manager:55 - Startup time: 2025-06-07 19:35:29
+2025-06-07 19:35:29 [INFO] logging_manager:56 - ==================================================
+2025-06-07 19:35:29 [INFO] main:220 - Logging initialized on 2025-06-07
+2025-06-07 19:35:29 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-07 19:35:29 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-07 19:35:29 [INFO] main:96 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-07 19:35:29 [INFO] logging_manager:52 - ==================================================
+2025-06-07 19:35:29 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-07 19:35:29 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-07 19:35:29 [INFO] logging_manager:55 - Startup time: 2025-06-07 19:35:29
+2025-06-07 19:35:29 [INFO] logging_manager:56 - ==================================================
+2025-06-07 19:35:29 [INFO] main:220 - Logging initialized on 2025-06-07
+2025-06-07 19:35:29 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-07 19:35:29 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-07 19:35:29 [INFO] main:96 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-07 19:35:29 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-07 19:35:29 [INFO] main:2759 - Updated screen dimensions in settings: 1512x944
+2025-06-07 19:35:29 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x944
+2025-06-07 19:35:29 [INFO] main:244 - UI setup complete.
+2025-06-07 19:35:29 [INFO] main:492 - Visitors table checked/created successfully
+2025-06-07 19:35:29 [INFO] main:341 - Real-time backup database initialized successfully
+2025-06-07 19:35:29 [INFO] fingerprint_manager:54 - Fingerprint database initialization complete
+2025-06-07 19:35:29 [INFO] digitalpersona_driver:43 - DigitalPersona device configuration set successfully
+2025-06-07 19:35:29 [INFO] digitalpersona_driver:54 - Interface claimed successfully
+2025-06-07 19:35:29 [INFO] digitalpersona_driver:114 - Activation command sent, result: 8
+2025-06-07 19:35:29 [INFO] fingerprint_manager:66 - DigitalPersona device available: DigitalPersona device connected and activated
+2025-06-07 19:35:29 [INFO] main:271 - Fingerprint device detected and initialized
+2025-06-07 19:35:29 [INFO] main:299 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944, 'admin_pin': '123456', 'exit_code': '654321'}
+2025-06-07 19:35:29 [INFO] main:302 - Initializing TimesheetCheckerThread...
+2025-06-07 19:35:32 [INFO] main:1438 - Opening admin tab
+2025-06-07 19:35:38 [INFO] digitalpersona_driver:43 - DigitalPersona device configuration set successfully
+2025-06-07 19:35:38 [INFO] digitalpersona_driver:54 - Interface claimed successfully
+2025-06-07 19:35:38 [INFO] digitalpersona_driver:114 - Activation command sent, result: 8
+2025-06-07 19:35:38 [INFO] fingerprint_manager:66 - DigitalPersona device available: DigitalPersona device connected and activated
+2025-06-07 19:35:38 [WARNING] fingerprint_manager:131 - OpenCV camera capture disabled - using DigitalPersona device instead
+2025-06-07 19:35:38 [INFO] fingerprint_manager:105 - Attempting to capture fingerprint from DigitalPersona device...
+2025-06-07 19:35:38 [INFO] digitalpersona_driver:151 - Starting fingerprint capture - LED should turn red
+2025-06-07 19:35:38 [INFO] digitalpersona_driver:166 - Capture started - LED should be red
+2025-06-07 19:35:38 [INFO] digitalpersona_driver:217 - Waiting for finger placement...
+2025-06-07 19:35:40 [INFO] digitalpersona_driver:185 - Stopping fingerprint capture - LED should return to blue
+2025-06-07 19:35:40 [INFO] digitalpersona_driver:199 - Capture stopped - LED should be blue
+2025-06-07 19:35:40 [INFO] fingerprint_manager:119 - Fingerprint capture completed successfully
+2025-06-07 19:35:40 [INFO] fingerprint_manager:258 - Fingerprint enrolled for staff code: 5805
+2025-06-07 19:35:43 [INFO] main:3713 - Fingerprint enrolled for andrei (5805)
+2025-06-07 19:36:01 [INFO] digitalpersona_driver:43 - DigitalPersona device configuration set successfully
+2025-06-07 19:36:01 [INFO] digitalpersona_driver:54 - Interface claimed successfully
+2025-06-07 19:36:01 [INFO] digitalpersona_driver:114 - Activation command sent, result: 8
+2025-06-07 19:36:01 [INFO] fingerprint_manager:66 - DigitalPersona device available: DigitalPersona device connected and activated
+2025-06-07 19:36:01 [WARNING] fingerprint_manager:131 - OpenCV camera capture disabled - using DigitalPersona device instead
+2025-06-07 19:36:01 [INFO] fingerprint_manager:105 - Attempting to capture fingerprint from DigitalPersona device...
+2025-06-07 19:36:01 [INFO] digitalpersona_driver:151 - Starting fingerprint capture - LED should turn red
+2025-06-07 19:36:01 [INFO] digitalpersona_driver:166 - Capture started - LED should be red
+2025-06-07 19:36:01 [INFO] digitalpersona_driver:217 - Waiting for finger placement...
+2025-06-07 19:36:03 [INFO] digitalpersona_driver:185 - Stopping fingerprint capture - LED should return to blue
+2025-06-07 19:36:03 [INFO] digitalpersona_driver:199 - Capture stopped - LED should be blue
+2025-06-07 19:36:03 [INFO] fingerprint_manager:119 - Fingerprint capture completed successfully
+2025-06-07 19:36:03 [ERROR] fingerprint_manager:224 - Error comparing fingerprints: OpenCV(4.11.0) /Users/xperience/GHA-Actions-OpenCV/_work/opencv-python/opencv-python/opencv/modules/flann/src/miniflann.cpp:336: error: (-210:Unsupported format or combination of formats) in function 'buildIndex_'
+> type=0
+> 
+2025-06-07 19:36:03 [WARNING] main:916 - Fingerprint authentication failed: Fingerprint not recognized
+2025-06-07 19:36:08 [INFO] main:1438 - Opening admin tab
+2025-06-07 19:36:12 [INFO] fingerprint_manager:336 - Fingerprint removed for staff code: 5805
+2025-06-07 19:36:12 [INFO] main:3742 - Fingerprint removed for andrei (5805)
+2025-06-07 19:36:18 [INFO] digitalpersona_driver:43 - DigitalPersona device configuration set successfully
+2025-06-07 19:36:18 [INFO] digitalpersona_driver:54 - Interface claimed successfully
+2025-06-07 19:36:18 [INFO] digitalpersona_driver:114 - Activation command sent, result: 8
+2025-06-07 19:36:18 [INFO] fingerprint_manager:66 - DigitalPersona device available: DigitalPersona device connected and activated
+2025-06-07 19:36:18 [WARNING] fingerprint_manager:131 - OpenCV camera capture disabled - using DigitalPersona device instead
+2025-06-07 19:36:18 [INFO] fingerprint_manager:105 - Attempting to capture fingerprint from DigitalPersona device...
+2025-06-07 19:36:18 [INFO] digitalpersona_driver:151 - Starting fingerprint capture - LED should turn red
+2025-06-07 19:36:18 [INFO] digitalpersona_driver:166 - Capture started - LED should be red
+2025-06-07 19:36:18 [INFO] digitalpersona_driver:217 - Waiting for finger placement...
+2025-06-07 19:36:20 [INFO] digitalpersona_driver:185 - Stopping fingerprint capture - LED should return to blue
+2025-06-07 19:36:20 [INFO] digitalpersona_driver:199 - Capture stopped - LED should be blue
+2025-06-07 19:36:20 [INFO] fingerprint_manager:119 - Fingerprint capture completed successfully
+2025-06-07 19:36:20 [INFO] fingerprint_manager:258 - Fingerprint enrolled for staff code: 5805
+2025-06-07 19:36:21 [INFO] main:3713 - Fingerprint enrolled for andrei (5805)
+2025-06-07 19:38:12 [INFO] logging_manager:52 - ==================================================
+2025-06-07 19:38:12 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-07 19:38:12 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-07 19:38:12 [INFO] logging_manager:55 - Startup time: 2025-06-07 19:38:12
+2025-06-07 19:38:12 [INFO] logging_manager:56 - ==================================================
+2025-06-07 19:38:12 [INFO] main:220 - Logging initialized on 2025-06-07
+2025-06-07 19:38:12 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-07 19:38:12 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-07 19:38:12 [INFO] main:96 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-07 19:38:12 [INFO] logging_manager:52 - ==================================================
+2025-06-07 19:38:12 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-07 19:38:12 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/ProgramData/staff_clock_system.log
+2025-06-07 19:38:12 [INFO] logging_manager:55 - Startup time: 2025-06-07 19:38:12
+2025-06-07 19:38:12 [INFO] logging_manager:56 - ==================================================
+2025-06-07 19:38:12 [INFO] main:220 - Logging initialized on 2025-06-07
+2025-06-07 19:38:12 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/staff_hours.db
+2025-06-07 19:38:12 [INFO] main:122 - File found: /Users/andreiiacob/StaffClock/ProgramData/settings.json
+2025-06-07 19:38:12 [INFO] main:96 - Folder found: /Users/andreiiacob/StaffClock/QR_Codes
+2025-06-07 19:38:12 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-07 19:38:12 [INFO] main:2759 - Updated screen dimensions in settings: 1512x944
+2025-06-07 19:38:12 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x944
+2025-06-07 19:38:12 [INFO] main:244 - UI setup complete.
+2025-06-07 19:38:12 [INFO] main:492 - Visitors table checked/created successfully
+2025-06-07 19:38:12 [INFO] main:341 - Real-time backup database initialized successfully
+2025-06-07 19:38:12 [INFO] fingerprint_manager:54 - Fingerprint database initialization complete
+2025-06-07 19:38:12 [INFO] digitalpersona_driver:43 - DigitalPersona device configuration set successfully
+2025-06-07 19:38:12 [INFO] digitalpersona_driver:54 - Interface claimed successfully
+2025-06-07 19:38:12 [INFO] digitalpersona_driver:114 - Activation command sent, result: 8
+2025-06-07 19:38:12 [INFO] fingerprint_manager:66 - DigitalPersona device available: DigitalPersona device connected and activated
+2025-06-07 19:38:12 [INFO] main:271 - Fingerprint device detected and initialized
+2025-06-07 19:38:13 [INFO] main:299 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 944, 'admin_pin': '123456', 'exit_code': '654321'}
+2025-06-07 19:38:13 [INFO] main:302 - Initializing TimesheetCheckerThread...
+2025-06-07 19:38:17 [INFO] digitalpersona_driver:43 - DigitalPersona device configuration set successfully
+2025-06-07 19:38:17 [INFO] digitalpersona_driver:54 - Interface claimed successfully
+2025-06-07 19:38:17 [INFO] digitalpersona_driver:114 - Activation command sent, result: 8
+2025-06-07 19:38:17 [INFO] fingerprint_manager:66 - DigitalPersona device available: DigitalPersona device connected and activated
+2025-06-07 19:38:17 [WARNING] fingerprint_manager:131 - OpenCV camera capture disabled - using DigitalPersona device instead
+2025-06-07 19:38:17 [INFO] fingerprint_manager:105 - Attempting to capture fingerprint from DigitalPersona device...
+2025-06-07 19:38:17 [INFO] digitalpersona_driver:151 - Starting fingerprint capture - LED should turn red
+2025-06-07 19:38:17 [INFO] digitalpersona_driver:166 - Capture started - LED should be red
+2025-06-07 19:38:17 [INFO] digitalpersona_driver:217 - Waiting for finger placement...
+2025-06-07 19:38:19 [INFO] digitalpersona_driver:185 - Stopping fingerprint capture - LED should return to blue
+2025-06-07 19:38:19 [INFO] digitalpersona_driver:199 - Capture stopped - LED should be blue
+2025-06-07 19:38:19 [INFO] fingerprint_manager:119 - Fingerprint capture completed successfully
+2025-06-07 19:38:19 [ERROR] fingerprint_manager:224 - Error comparing fingerprints: OpenCV(4.11.0) /Users/xperience/GHA-Actions-OpenCV/_work/opencv-python/opencv-python/opencv/modules/flann/src/miniflann.cpp:336: error: (-210:Unsupported format or combination of formats) in function 'buildIndex_'
+> type=0
+> 
+2025-06-07 19:38:19 [WARNING] main:916 - Fingerprint authentication failed: Fingerprint not recognized

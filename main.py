@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem, QCompleter, QGridLayout
 )
 from PyQt6.QtCore import Qt, QTimer, QTime, QEvent, QUrl
-from PyQt6.QtGui import QFont, QPixmap, QImage, QScreen
+from PyQt6.QtGui import QFont, QPixmap, QImage, QScreen, QColor
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
 from PyQt6.QtWebEngineWidgets import QWebEngineView
@@ -40,6 +40,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from timesheetDailyCheck import TimesheetCheckerThread
 from dailyBackUp import DailyBackUp
 from utils.logging_manager import LoggingManager
+from fingerprint_manager import FingerprintManager, detect_digitalPersona_device
 
 # Application version
 APP_VERSION = "1.0.0"
@@ -202,7 +203,9 @@ def generate_default_settings(path, rect=None):
         "end_day": 20,
         "printer_IP": "10.60.1.146",
         "width": rect.width() if rect else 1920,  # Default fallback width
-        "height": rect.height() if rect else 1080  # Default fallback height
+        "height": rect.height() if rect else 1080,  # Default fallback height
+        "admin_pin": "123456",
+        "exit_code": "654321"
     }
     with open(path, "w") as file:
         json.dump(default_settings, file, indent=4)
@@ -252,6 +255,22 @@ class StaffClockInOutSystem(QMainWindow):
         self.database_path = databasePath
         self.log_file_path = log_file
         self.settings_path = settingsFilePath
+        
+        # Initialize archive database folder
+        self.archive_folder = os.path.join(os.path.dirname(__file__), "Archive_Databases")
+        os.makedirs(self.archive_folder, exist_ok=True)
+        
+        # Initialize real-time backup database
+        self.realtime_backup_path = os.path.join(os.path.dirname(__file__), "Backups", "realtime_backup.db")
+        self.initialize_realtime_backup()
+        
+        # Initialize fingerprint system
+        self.fingerprint_manager = FingerprintManager(self.database_path)
+        self.fingerprint_device_available = self.fingerprint_manager.is_device_available()
+        if self.fingerprint_device_available:
+            logging.info("Fingerprint device detected and initialized")
+        else:
+            logging.warning("Fingerprint device not detected - using PIN authentication only")
 
         self.daily_backup_thread = DailyBackUp(
             backup_folder=os.path.join(os.path.dirname(__file__), "Backups"),
@@ -285,6 +304,175 @@ class StaffClockInOutSystem(QMainWindow):
         self.timesheet_checker.timesheet_generated.connect(self.handle_timesheet_generated)
         self.timesheet_checker.start()
 
+    def initialize_realtime_backup(self):
+        """Initialize the real-time backup database."""
+        try:
+            os.makedirs(os.path.dirname(self.realtime_backup_path), exist_ok=True)
+            conn = sqlite3.connect(self.realtime_backup_path)
+            c = conn.cursor()
+            
+            # Create backup tables with timestamp
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS backup_clock_records (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    original_id INTEGER,
+                    staff_code TEXT NOT NULL,
+                    clock_in_time TEXT,
+                    clock_out_time TEXT,
+                    notes TEXT,
+                    break_time TEXT,
+                    backup_timestamp TEXT NOT NULL
+                )
+            ''')
+            
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS backup_staff (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    original_code TEXT,
+                    name TEXT NOT NULL,
+                    role TEXT,
+                    notes TEXT,
+                    backup_timestamp TEXT NOT NULL
+                )
+            ''')
+            
+            conn.commit()
+            conn.close()
+            logging.info("Real-time backup database initialized successfully")
+            
+        except Exception as e:
+            logging.error(f"Failed to initialize real-time backup database: {e}")
+
+    def backup_clock_record(self, record_id, staff_code, clock_in_time, clock_out_time, notes=None, break_time=None):
+        """Immediately backup a clock record after it's created/updated."""
+        try:
+            backup_timestamp = datetime.now().isoformat()
+            conn = sqlite3.connect(self.realtime_backup_path)
+            c = conn.cursor()
+            
+            c.execute('''
+                INSERT INTO backup_clock_records 
+                (original_id, staff_code, clock_in_time, clock_out_time, notes, break_time, backup_timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (record_id, staff_code, clock_in_time, clock_out_time, notes, break_time, backup_timestamp))
+            
+            conn.commit()
+            conn.close()
+            logging.info(f"Real-time backup created for clock record ID: {record_id}")
+            
+        except Exception as e:
+            logging.error(f"Failed to create real-time backup for clock record: {e}")
+
+    def backup_staff_record(self, staff_code, name, role=None, notes=None):
+        """Immediately backup a staff record after it's created/updated."""
+        try:
+            backup_timestamp = datetime.now().isoformat()
+            conn = sqlite3.connect(self.realtime_backup_path)
+            c = conn.cursor()
+            
+            c.execute('''
+                INSERT INTO backup_staff 
+                (original_code, name, role, notes, backup_timestamp)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (staff_code, name, role, notes, backup_timestamp))
+            
+            conn.commit()
+            conn.close()
+            logging.info(f"Real-time backup created for staff: {name}")
+            
+        except Exception as e:
+            logging.error(f"Failed to create real-time backup for staff record: {e}")
+
+    def archive_current_database(self):
+        """Archive the current database and reset it for a fresh start."""
+        try:
+            # Create archive filename with current date
+            archive_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            archive_filename = f"database_archive_{archive_date}.db"
+            archive_path = os.path.join(self.archive_folder, archive_filename)
+            
+            logging.info(f"Starting database archival process for {archive_date}")
+            
+            # Copy current database to archive
+            shutil.copy2(self.database_path, archive_path)
+            logging.info(f"Database copied to archive: {archive_path}")
+            
+            # Reset the current database (clear records but keep structure)
+            self.reset_current_database()
+            
+            # Show success message
+            self.msg(f"Database archived successfully as {archive_filename}", "info", "Archive Complete")
+            logging.info(f"Database archival completed successfully")
+            
+        except Exception as e:
+            logging.error(f"Failed to archive database: {e}")
+            self.msg(f"Error archiving database: {str(e)}", "warning", "Archive Error")
+
+    def reset_current_database(self):
+        """Reset the current database by clearing all records but keeping structure and staff."""
+        try:
+            conn = sqlite3.connect(self.database_path)
+            c = conn.cursor()
+            
+            # Count records before deletion for logging
+            c.execute('SELECT COUNT(*) FROM clock_records')
+            clock_records_count = c.fetchone()[0]
+            
+            c.execute('SELECT COUNT(*) FROM visitors')
+            visitors_count = c.fetchone()[0]
+            
+            logging.info(f"About to clear database: {clock_records_count} clock records, {visitors_count} visitor records")
+            
+            # Clear clock records (this is the main data we want to reset monthly)
+            c.execute('DELETE FROM clock_records')
+            
+            # Clear visitor records (these can be reset monthly too)
+            c.execute('DELETE FROM visitors')
+            
+            # Clear archive records (if any exist)
+            c.execute('DELETE FROM archive_records')
+            
+            # Note: We keep the staff table intact so employees don't need to be re-added
+            
+            conn.commit()
+            conn.close()
+            
+            logging.info(f"Current database reset successfully - cleared {clock_records_count} clock records, {visitors_count} visitor records")
+            
+        except Exception as e:
+            logging.error(f"Failed to reset current database: {e}")
+            raise
+
+    def get_archive_databases(self):
+        """Get a list of all archive databases with their creation dates."""
+        try:
+            archive_files = []
+            if os.path.exists(self.archive_folder):
+                for filename in os.listdir(self.archive_folder):
+                    if filename.startswith("database_archive_") and filename.endswith(".db"):
+                        file_path = os.path.join(self.archive_folder, filename)
+                        # Extract date from filename
+                        date_part = filename.replace("database_archive_", "").replace(".db", "")
+                        try:
+                            archive_date = datetime.strptime(date_part, "%Y-%m-%d_%H-%M-%S")
+                            archive_files.append({
+                                'filename': filename,
+                                'path': file_path,
+                                'date': archive_date,
+                                'size': os.path.getsize(file_path)
+                            })
+                        except ValueError:
+                            # Skip files that don't match our naming convention
+                            continue
+            
+            # Sort by date (newest first)
+            archive_files.sort(key=lambda x: x['date'], reverse=True)
+            return archive_files
+            
+        except Exception as e:
+            logging.error(f"Failed to get archive databases: {e}")
+            return []
+
     def ensure_visitors_table(self):
         """Ensure the visitors table exists in the database."""
         try:
@@ -310,6 +498,9 @@ class StaffClockInOutSystem(QMainWindow):
     def handle_timesheet_generated(self, message):
         logging.info(message)
         self.generate_all_timesheets(self.settings["end_day"])
+        
+        # After generating timesheets, archive the database
+        self.archive_current_database()
 
     def closeEvent(self, event):
         # Log shutdown
@@ -330,11 +521,22 @@ class StaffClockInOutSystem(QMainWindow):
 
     def load_settings(self):
         settings_file = settingsFilePath
-        default_settings = {"start_day": 21, "end_day": 20, "printer_IP": "10.60.1.146"}
+        default_settings = {
+            "start_day": 21, 
+            "end_day": 20, 
+            "printer_IP": "10.60.1.146",
+            "admin_pin": "123456",
+            "exit_code": "654321"
+        }
 
         if os.path.exists(settings_file):
             with open(settings_file, "r") as file:
-                return json.load(file)
+                settings = json.load(file)
+                # Ensure new settings exist in loaded file
+                for key, value in default_settings.items():
+                    if key not in settings:
+                        settings[key] = value
+                return settings
         else:
             with open(settings_file, "w") as file:
                 json.dump(default_settings, file)
@@ -474,6 +676,18 @@ class StaffClockInOutSystem(QMainWindow):
             lambda: self.scan_qr_code()
         )
         button_layout.addWidget(self.qr_scan_button)
+
+        # Fingerprint Scan Button
+        fingerprint_color = self.COLORS['success'] if self.fingerprint_device_available else self.COLORS['gray']
+        fingerprint_text = "Scan Fingerprint" if self.fingerprint_device_available else "Fingerprint Unavailable"
+        self.fingerprint_scan_button = self.create_styled_button(
+            fingerprint_text,
+            fingerprint_color,
+            lambda: self.scan_fingerprint()
+        )
+        if not self.fingerprint_device_available:
+            self.fingerprint_scan_button.setEnabled(False)
+        button_layout.addWidget(self.fingerprint_scan_button)
 
         # Clock In Button
         self.clock_in_button = self.create_styled_button(
@@ -678,6 +892,33 @@ class StaffClockInOutSystem(QMainWindow):
         self.qr_scan_button.setText("Scan QR Code")
         logging.info("Camera stopped for QR scanning.")
 
+    def scan_fingerprint(self):
+        """Scan fingerprint for authentication."""
+        if not self.fingerprint_device_available:
+            self.msg("Fingerprint device not available.", "warning", "Error")
+            return
+        
+        # Show scanning message
+        self.msg("Place your finger on the scanner...", "info", "Scanning")
+        
+        # Perform fingerprint authentication
+        try:
+            staff_code, message = self.fingerprint_manager.authenticate_fingerprint()
+            
+            if staff_code:
+                # Fingerprint recognized
+                self.staff_code_entry.setText(staff_code)
+                self.msg(f"Fingerprint recognized: {message}", "info", "Success")
+                logging.info(f"Fingerprint authentication successful for: {staff_code}")
+            else:
+                # Fingerprint not recognized
+                self.msg(f"Authentication failed: {message}", "warning", "Error")
+                logging.warning(f"Fingerprint authentication failed: {message}")
+                
+        except Exception as e:
+            self.msg(f"Fingerprint scan error: {str(e)}", "warning", "Error")
+            logging.error(f"Fingerprint scan error: {e}")
+
     def clock_action(self, action, staff_code):
         logger.log_system_event("Clock Action", f"Processing {action} for staff code {staff_code}")
         conn = sqlite3.connect(databasePath)
@@ -714,6 +955,13 @@ class StaffClockInOutSystem(QMainWindow):
                     c.execute('INSERT INTO clock_records (staff_code, clock_in_time) VALUES (?, ?)',
                               (staff_code, clock_in_time))
                     conn.commit()
+                    
+                    # Get the record ID for backup
+                    record_id = c.lastrowid
+                    
+                    # Create real-time backup
+                    self.backup_clock_record(record_id, staff_code, clock_in_time, None)
+                    
                     time_in = datetime.fromisoformat(clock_in_time).strftime('%H:%M')
                     logger.log_user_action(staff_code, "Clock In", f"Clocked in at {time_in}")
                     self.msg(f'Clock-in recorded successfully at {time_in}', 'info', 'Success')
@@ -727,6 +975,13 @@ class StaffClockInOutSystem(QMainWindow):
                     c.execute('UPDATE clock_records SET break_time = ? WHERE staff_code = ? AND clock_out_time IS NULL',
                               (str(break_duration), staff_code))
                     conn.commit()
+                    
+                    # Get the updated record for backup
+                    c.execute('SELECT id, clock_in_time, clock_out_time, notes FROM clock_records WHERE staff_code = ? AND clock_out_time IS NULL', (staff_code,))
+                    updated_record = c.fetchone()
+                    if updated_record:
+                        self.backup_clock_record(updated_record[0], staff_code, updated_record[1], updated_record[2], updated_record[3], str(break_duration))
+                    
                     self.on_break = False
                     self.break_start_time = None
                     logger.log_user_action(staff_code, "Break End", f"Break ended. Duration: {break_duration:.2f} minutes")
@@ -743,6 +998,13 @@ class StaffClockInOutSystem(QMainWindow):
                         return
                     c.execute('UPDATE clock_records SET clock_out_time = ? WHERE id = ?', (clock_out_time, clock_record[0]))
                     conn.commit()
+                    
+                    # Get the updated record for backup
+                    c.execute('SELECT clock_in_time, notes, break_time FROM clock_records WHERE id = ?', (clock_record[0],))
+                    updated_record = c.fetchone()
+                    if updated_record:
+                        self.backup_clock_record(clock_record[0], staff_code, updated_record[0], clock_out_time, updated_record[1], updated_record[2])
+                    
                     time_out = datetime.fromisoformat(clock_out_time).strftime('%H:%M')
                     logger.log_user_action(staff_code, "Clock Out", f"Clocked out at {time_out}")
                     self.msg(f'Clock-out recorded successfully at {time_out}', 'info', 'Success')
@@ -824,15 +1086,15 @@ class StaffClockInOutSystem(QMainWindow):
                 self.greeting_label.setText("")
                 if hasattr(self, 'role_entry'):
                     self.role_entry.setText("")
-        elif staff_code == '123456':  # Admin code
+        elif staff_code == self.settings.get("admin_pin", "123456"):  # Admin code
             self.greeting_label.setText("Admin Mode Activated")
             self.admin_button.show()
             self.admin_button.click()
             self.admin_button.setVisible(True)  # Show the admin button
-        elif staff_code == '654321':  # Exit code
+        elif staff_code == self.settings.get("exit_code", "654321"):  # Exit code
             self.greeting_label.setText("Exit Mode Activated")
-            self.closeEvent()
-        elif staff_code =='111111':
+            self.close()
+        elif staff_code =='111111':  # Fire code (keep hardcoded for safety)
             self.greeting_label.setText("Fire!!!!!!")
             self.fire()
         else:
@@ -965,7 +1227,7 @@ class StaffClockInOutSystem(QMainWindow):
         """
         settings_dialog = QDialog(self)
         settings_dialog.setWindowTitle("Settings")
-        settings_dialog.setFixedSize(400, 300)
+        settings_dialog.setFixedSize(500, 400)
         settings_dialog.setStyleSheet(f"""
             QDialog {{
                 background: {self.COLORS['dark']};
@@ -1033,6 +1295,27 @@ class StaffClockInOutSystem(QMainWindow):
         layout.addWidget(ip_label)
         layout.addWidget(self.printer_ip_input)
 
+        # Admin Pin and Exit Code (Side by Side)
+        pin_layout = QHBoxLayout()
+        admin_pin_label = QLabel("Admin PIN:")
+        admin_pin_label.setFont(QFont("Inter", 12))
+        self.admin_pin_input = QLineEdit(self.settings.get("admin_pin", "123456"))
+        self.admin_pin_input.setFont(QFont("Inter", 12))
+        self.admin_pin_input.setFixedWidth(120)
+
+        exit_code_label = QLabel("Exit Code:")
+        exit_code_label.setFont(QFont("Inter", 12))
+        self.exit_code_input = QLineEdit(self.settings.get("exit_code", "654321"))
+        self.exit_code_input.setFont(QFont("Inter", 12))
+        self.exit_code_input.setFixedWidth(120)
+
+        pin_layout.addWidget(admin_pin_label)
+        pin_layout.addWidget(self.admin_pin_input)
+        pin_layout.addSpacing(40)  # Add some space between Admin PIN and Exit Code inputs
+        pin_layout.addWidget(exit_code_label)
+        pin_layout.addWidget(self.exit_code_input)
+        layout.addLayout(pin_layout)
+
         # Test Connection Button
         test_button = QPushButton("Test Printer Connection")
         test_button.setFont(QFont("Inter", 12))
@@ -1048,7 +1331,21 @@ class StaffClockInOutSystem(QMainWindow):
         settings_dialog.exec()
 
     def test_printer_connection(self, ip_address):
-        """Test both ping and port 9100 connection to the printer."""
+        """Test both ping and port 9100 connection to the printer (with UI feedback)."""
+        success, message = self.test_printer_connection_silent(ip_address)
+        
+        if success:
+            self.msg("Printer connection successful!", "info", "Success")
+        else:
+            self.msg(message, "warning", "Error")
+            
+        return success, message
+
+    def test_printer_connection_silent(self, ip_address):
+        """Test both ping and port 9100 connection to the printer (without UI feedback)."""
+        if not ip_address.strip():
+            return False, "IP address cannot be empty"
+            
         if not self.ping_printer(ip_address):
             return False, "Printer is not responding to ping"
             
@@ -1084,23 +1381,52 @@ class StaffClockInOutSystem(QMainWindow):
             if not printer_ip:
                 raise ValueError("Printer IP cannot be empty.")
 
+            # Validate Admin PIN and Exit Code
+            admin_pin = self.admin_pin_input.text().strip()
+            exit_code = self.exit_code_input.text().strip()
+            
+            if not admin_pin:
+                raise ValueError("Admin PIN cannot be empty.")
+            if not exit_code:
+                raise ValueError("Exit Code cannot be empty.")
+            if len(admin_pin) < 4:
+                raise ValueError("Admin PIN must be at least 4 characters.")
+            if len(exit_code) < 4:
+                raise ValueError("Exit Code must be at least 4 characters.")
+            if admin_pin == exit_code:
+                raise ValueError("Admin PIN and Exit Code cannot be the same.")
+
             # Show testing message
             self.msg("Testing printer connection...", "info", "Testing")
             
             # Test printer connection
-            success, message = self.test_printer_connection(printer_ip)
+            success, message = self.test_printer_connection_silent(printer_ip)
             if not success:
-                self.msg(f"Printer validation failed: {message}", "warning", "Error")
-                return
+                # Show dialog asking if user wants to save anyway
+                reply = QMessageBox.question(
+                    self,
+                    "Printer Connection Failed",
+                    f"Printer validation failed: {message}\n\nDo you want to save the settings anyway?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No
+                )
+                
+                if reply == QMessageBox.StandardButton.No:
+                    return
 
-            # If we get here, the printer connection was successful
             # Save all settings
             self.settings["start_day"] = start_day
             self.settings["end_day"] = end_day
             self.settings["printer_IP"] = printer_ip
+            self.settings["admin_pin"] = admin_pin
+            self.settings["exit_code"] = exit_code
 
             self.save_settings()
-            self.msg("Settings saved successfully. Printer connection verified.", "info", "Success")
+            
+            if success:
+                self.msg("Settings saved successfully. Printer connection verified.", "info", "Success")
+            else:
+                self.msg("Settings saved successfully. (Printer connection could not be verified)", "info", "Success")
             
         except ValueError as e:
             self.msg(f"Invalid settings: {e}", "warning", "Error")
@@ -1112,7 +1438,7 @@ class StaffClockInOutSystem(QMainWindow):
         logging.info("Opening admin tab")
         self.admin_tab = QDialog(self)
         self.admin_tab.setWindowTitle('Admin Panel')
-        self.admin_tab.setFixedSize(600, 800)
+        self.admin_tab.setFixedSize(600, 900)
         self.admin_tab.setStyleSheet(f"""
             QDialog {{
                 background: {self.COLORS['dark']};
@@ -1194,7 +1520,9 @@ class StaffClockInOutSystem(QMainWindow):
             ("Settings", self.COLORS['gray'], self.open_settings_menu, 3, 0),
             ("View Visitors", self.COLORS['brown'], self.open_visitors_tab, 3, 1),
             ("Add Comment", self.COLORS['purple'], self.add_comment, 4, 0),
-            ("Exit", self.COLORS['danger'], self.admin_tab.close, 4, 1)
+            ("Archive Management", self.COLORS['warning'], self.open_archive_management, 4, 1),
+            ("Fingerprint Management", self.COLORS['success'], self.open_fingerprint_management, 5, 0),
+            ("Exit", self.COLORS['danger'], self.admin_tab.close, 5, 1)
         ]
 
         # Create and add buttons to grid
@@ -1900,6 +2228,10 @@ class StaffClockInOutSystem(QMainWindow):
                 c.execute('INSERT INTO staff (name, code, role) VALUES (?, ?, ?)', 
                          (staff_name, staff_code, staff_role))
                 conn.commit()
+                
+                # Create real-time backup for staff record
+                self.backup_staff_record(staff_code, staff_name, staff_role)
+                
                 self.msg(f"Staff member {staff_name} added with code {staff_code}.", "info", "Success")
                 logging.info(f"Staff member {staff_name} added with code {staff_code} and role {staff_role}.")
                 self.generate_qr_code(staff_code)
@@ -2975,6 +3307,467 @@ class StaffClockInOutSystem(QMainWindow):
         except Exception as e:
             self.msg(f"Error printing visitor list: {e}", "warning", "Error")
             logging.error(f"Error printing visitor list: {e}")
+
+    def open_archive_management(self):
+        """Opens the archive management dialog to view and manage archived databases."""
+        archive_dialog = QDialog(self)
+        archive_dialog.setWindowTitle("Archive Management")
+        archive_dialog.setFixedSize(800, 600)
+        archive_dialog.setStyleSheet(f"""
+            QDialog {{
+                background: {self.COLORS['dark']};
+                color: {self.COLORS['light']};
+            }}
+            QLabel {{
+                color: {self.COLORS['light']};
+                font-family: Inter;
+            }}
+            QTableWidget {{
+                background: {self.COLORS['dark']};
+                color: {self.COLORS['light']};
+                border: none;
+                gridline-color: {self.COLORS['gray']};
+            }}
+            QTableWidget::item {{
+                padding: 10px;
+            }}
+            QTableWidget::item:selected {{
+                background: {self.COLORS['primary']};
+            }}
+            QHeaderView::section {{
+                background: {self.COLORS['primary']};
+                color: {self.COLORS['light']};
+                padding: 10px;
+                border: none;
+            }}
+            QPushButton {{
+                background: {self.COLORS['primary']};
+                color: {self.COLORS['light']};
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                min-width: 100px;
+            }}
+            QPushButton:hover {{
+                background: {self.COLORS['primary']}dd;
+            }}
+        """)
+
+        layout = QVBoxLayout(archive_dialog)
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Title
+        title_label = QLabel("Database Archive Management")
+        title_label.setFont(QFont("Inter", 16, QFont.Weight.Bold))
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+
+        # Get archive databases
+        archives = self.get_archive_databases()
+
+        if not archives:
+            no_archives_label = QLabel("No archived databases found.")
+            no_archives_label.setFont(QFont("Inter", 14))
+            no_archives_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(no_archives_label)
+        else:
+            # Create table for archives
+            table = QTableWidget(len(archives), 4)
+            table.setHorizontalHeaderLabels(["Archive Date", "Filename", "Size (KB)", "Actions"])
+            table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+            table.setFont(QFont("Inter", 11))
+
+            # Populate table
+            for row, archive in enumerate(archives):
+                date_str = archive['date'].strftime('%Y-%m-%d %H:%M:%S')
+                size_kb = archive['size'] / 1024
+
+                table.setItem(row, 0, QTableWidgetItem(date_str))
+                table.setItem(row, 1, QTableWidgetItem(archive['filename']))
+                table.setItem(row, 2, QTableWidgetItem(f"{size_kb:.1f}"))
+
+                # Action buttons container
+                actions_widget = QWidget()
+                actions_layout = QHBoxLayout(actions_widget)
+                actions_layout.setContentsMargins(5, 0, 5, 0)
+
+                # View button
+                view_button = QPushButton("View")
+                view_button.setStyleSheet(f"background-color: {self.COLORS['primary']}; min-width: 60px;")
+                view_button.clicked.connect(lambda checked, path=archive['path']: self.view_archive_database(path))
+
+                # Delete button
+                delete_button = QPushButton("Delete")
+                delete_button.setStyleSheet(f"background-color: {self.COLORS['danger']}; min-width: 60px;")
+                delete_button.clicked.connect(lambda checked, path=archive['path'], name=archive['filename']: 
+                                             self.delete_archive_database(path, name, archive_dialog))
+
+                actions_layout.addWidget(view_button)
+                actions_layout.addWidget(delete_button)
+                table.setCellWidget(row, 3, actions_widget)
+
+            layout.addWidget(table)
+
+        # Control buttons
+        button_layout = QHBoxLayout()
+        
+        # Manual archive button
+        manual_archive_button = QPushButton("Create Manual Archive")
+        manual_archive_button.setFont(QFont("Inter", 12))
+        manual_archive_button.setStyleSheet(f"""
+            background-color: {self.COLORS['warning']};
+            min-width: 150px;
+        """)
+        manual_archive_button.clicked.connect(lambda: self.create_manual_archive(archive_dialog))
+        
+        # Refresh button
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setFont(QFont("Inter", 12))
+        refresh_button.clicked.connect(lambda: self.refresh_archive_management(archive_dialog))
+        
+        # Close button
+        close_button = QPushButton("Close")
+        close_button.setFont(QFont("Inter", 12))
+        close_button.clicked.connect(archive_dialog.close)
+        
+        button_layout.addWidget(manual_archive_button)
+        button_layout.addWidget(refresh_button)
+        button_layout.addWidget(close_button)
+        layout.addLayout(button_layout)
+
+        archive_dialog.exec()
+
+    def view_archive_database(self, archive_path):
+        """View the contents of an archived database."""
+        try:
+            conn = sqlite3.connect(archive_path)
+            cursor = conn.cursor()
+            
+            # Get summary information
+            cursor.execute("SELECT COUNT(*) FROM staff")
+            staff_count = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COUNT(*) FROM clock_records")
+            records_count = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COUNT(*) FROM visitors")
+            visitors_count = cursor.fetchone()[0]
+            
+            conn.close()
+            
+            # Display summary
+            summary_text = f"""Archive Database Summary:
+            
+Staff Members: {staff_count}
+Clock Records: {records_count}
+Visitor Records: {visitors_count}
+
+Archive Location: {archive_path}"""
+            
+            self.msg(summary_text, "info", "Archive Database Summary")
+            
+        except Exception as e:
+            self.msg(f"Error reading archive database: {str(e)}", "warning", "Error")
+            logging.error(f"Error reading archive database {archive_path}: {e}")
+
+    def delete_archive_database(self, archive_path, filename, parent_dialog):
+        """Delete an archived database after confirmation."""
+        try:
+            # Confirmation dialog
+            reply = QMessageBox.question(
+                parent_dialog, 
+                "Confirm Deletion", 
+                f"Are you sure you want to delete the archive '{filename}'?\n\nThis action cannot be undone.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                os.remove(archive_path)
+                self.msg(f"Archive '{filename}' deleted successfully.", "info", "Archive Deleted")
+                logging.info(f"Deleted archive database: {filename}")
+                
+                # Refresh the dialog
+                parent_dialog.close()
+                self.open_archive_management()
+                
+        except Exception as e:
+            self.msg(f"Error deleting archive: {str(e)}", "warning", "Error")
+            logging.error(f"Error deleting archive {archive_path}: {e}")
+
+    def create_manual_archive(self, parent_dialog):
+        """Create a manual archive of the current database."""
+        try:
+            reply = QMessageBox.question(
+                parent_dialog,
+                "Create Manual Archive",
+                "This will create an archive of the current database.\n\nDo you want to proceed?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                # Create manual archive (but don't reset the database)
+                archive_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                archive_filename = f"manual_archive_{archive_date}.db"
+                archive_path = os.path.join(self.archive_folder, archive_filename)
+                
+                shutil.copy2(self.database_path, archive_path)
+                self.msg(f"Manual archive created: {archive_filename}", "info", "Archive Created")
+                logging.info(f"Manual archive created: {archive_filename}")
+                
+                # Refresh the dialog
+                parent_dialog.close()
+                self.open_archive_management()
+                
+        except Exception as e:
+            self.msg(f"Error creating manual archive: {str(e)}", "warning", "Error")
+            logging.error(f"Error creating manual archive: {e}")
+
+    def refresh_archive_management(self, dialog):
+        """Refresh the archive management dialog."""
+        dialog.close()
+        self.open_archive_management()
+
+    def open_fingerprint_management(self):
+        """Opens the fingerprint management dialog."""
+        fingerprint_dialog = QDialog(self)
+        fingerprint_dialog.setWindowTitle("Fingerprint Management")
+        fingerprint_dialog.setFixedSize(800, 600)
+        fingerprint_dialog.setStyleSheet(f"""
+            QDialog {{
+                background: {self.COLORS['dark']};
+                color: {self.COLORS['light']};
+            }}
+            QLabel {{
+                color: {self.COLORS['light']};
+                font-family: Inter;
+            }}
+            QTableWidget {{
+                background: {self.COLORS['dark']};
+                color: {self.COLORS['light']};
+                border: none;
+                gridline-color: {self.COLORS['gray']};
+            }}
+            QTableWidget::item {{
+                padding: 10px;
+            }}
+            QTableWidget::item:selected {{
+                background: {self.COLORS['primary']};
+            }}
+            QHeaderView::section {{
+                background: {self.COLORS['primary']};
+                color: {self.COLORS['light']};
+                padding: 10px;
+                border: none;
+            }}
+            QPushButton {{
+                background: {self.COLORS['primary']};
+                color: {self.COLORS['light']};
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                min-width: 100px;
+            }}
+            QPushButton:hover {{
+                background: {self.COLORS['primary']}dd;
+            }}
+        """)
+
+        layout = QVBoxLayout(fingerprint_dialog)
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Title
+        title_label = QLabel("Fingerprint Management")
+        title_label.setFont(QFont("Inter", 16, QFont.Weight.Bold))
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+
+        # Device status
+        device_status = "Connected" if self.fingerprint_device_available else "Not Connected"
+        status_color = self.COLORS['success'] if self.fingerprint_device_available else self.COLORS['danger']
+        status_label = QLabel(f"Device Status: {device_status}")
+        status_label.setFont(QFont("Inter", 12))
+        status_label.setStyleSheet(f"color: {status_color};")
+        layout.addWidget(status_label)
+
+        # Get all staff and their fingerprint status
+        try:
+            conn = sqlite3.connect(self.database_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT code, name, fingerprint_enrolled 
+                FROM staff 
+                ORDER BY name
+            ''')
+            staff_data = cursor.fetchall()
+            conn.close()
+        except Exception as e:
+            self.msg(f"Error loading staff data: {e}", "warning", "Error")
+            staff_data = []
+
+        if not staff_data:
+            no_staff_label = QLabel("No staff members found.")
+            no_staff_label.setFont(QFont("Inter", 14))
+            no_staff_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(no_staff_label)
+        else:
+            # Create table for staff fingerprint status
+            table = QTableWidget(len(staff_data), 4)
+            table.setHorizontalHeaderLabels(["Staff Code", "Name", "Fingerprint Status", "Actions"])
+            table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+            table.setFont(QFont("Inter", 11))
+
+            # Populate table
+            for row, (staff_code, staff_name, is_enrolled) in enumerate(staff_data):
+                status = "Enrolled" if is_enrolled else "Not Enrolled"
+                status_color = self.COLORS['success'] if is_enrolled else self.COLORS['gray']
+
+                table.setItem(row, 0, QTableWidgetItem(staff_code))
+                table.setItem(row, 1, QTableWidgetItem(staff_name))
+                
+                status_item = QTableWidgetItem(status)
+                status_item.setForeground(QColor(status_color))
+                table.setItem(row, 2, status_item)
+
+                # Action buttons container
+                actions_widget = QWidget()
+                actions_layout = QHBoxLayout(actions_widget)
+                actions_layout.setContentsMargins(5, 0, 5, 0)
+
+                if is_enrolled:
+                    # Remove fingerprint button
+                    remove_button = QPushButton("Remove")
+                    remove_button.setStyleSheet(f"background-color: {self.COLORS['danger']}; min-width: 60px;")
+                    remove_button.clicked.connect(lambda checked, code=staff_code, name=staff_name: 
+                                                 self.remove_staff_fingerprint(code, name, fingerprint_dialog))
+                    actions_layout.addWidget(remove_button)
+                else:
+                    # Enroll fingerprint button
+                    enroll_button = QPushButton("Enroll")
+                    enroll_button.setStyleSheet(f"background-color: {self.COLORS['success']}; min-width: 60px;")
+                    enroll_button.setEnabled(self.fingerprint_device_available)
+                    enroll_button.clicked.connect(lambda checked, code=staff_code, name=staff_name: 
+                                                 self.enroll_staff_fingerprint(code, name, fingerprint_dialog))
+                    actions_layout.addWidget(enroll_button)
+
+                table.setCellWidget(row, 3, actions_widget)
+
+            layout.addWidget(table)
+
+        # Control buttons
+        button_layout = QHBoxLayout()
+        
+        # Test device button
+        test_device_button = QPushButton("Test Device")
+        test_device_button.setFont(QFont("Inter", 12))
+        test_device_button.setStyleSheet(f"""
+            background-color: {self.COLORS['primary']};
+            min-width: 120px;
+        """)
+        test_device_button.clicked.connect(self.test_fingerprint_device)
+        
+        # Refresh button
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setFont(QFont("Inter", 12))
+        refresh_button.clicked.connect(lambda: self.refresh_fingerprint_management(fingerprint_dialog))
+        
+        # Close button
+        close_button = QPushButton("Close")
+        close_button.setFont(QFont("Inter", 12))
+        close_button.clicked.connect(fingerprint_dialog.close)
+        
+        button_layout.addWidget(test_device_button)
+        button_layout.addWidget(refresh_button)
+        button_layout.addWidget(close_button)
+        layout.addLayout(button_layout)
+
+        fingerprint_dialog.exec()
+
+    def enroll_staff_fingerprint(self, staff_code, staff_name, parent_dialog):
+        """Enroll fingerprint for a staff member."""
+        try:
+            if not self.fingerprint_device_available:
+                self.msg("Fingerprint device not available.", "warning", "Error")
+                return
+
+            # Show confirmation dialog
+            reply = QMessageBox.question(
+                parent_dialog,
+                "Enroll Fingerprint",
+                f"Ready to enroll fingerprint for {staff_name}.\n\nPlace finger on the scanner when ready.",
+                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Ok
+            )
+            
+            if reply == QMessageBox.StandardButton.Ok:
+                # Enroll fingerprint
+                success, message = self.fingerprint_manager.enroll_fingerprint(staff_code)
+                
+                if success:
+                    self.msg(f"Fingerprint enrolled successfully for {staff_name}.", "info", "Success")
+                    logging.info(f"Fingerprint enrolled for {staff_name} ({staff_code})")
+                    
+                    # Refresh the dialog
+                    parent_dialog.close()
+                    self.open_fingerprint_management()
+                else:
+                    self.msg(f"Fingerprint enrollment failed: {message}", "warning", "Error")
+                    
+        except Exception as e:
+            self.msg(f"Error enrolling fingerprint: {str(e)}", "warning", "Error")
+            logging.error(f"Error enrolling fingerprint for {staff_code}: {e}")
+
+    def remove_staff_fingerprint(self, staff_code, staff_name, parent_dialog):
+        """Remove fingerprint for a staff member."""
+        try:
+            # Show confirmation dialog
+            reply = QMessageBox.question(
+                parent_dialog,
+                "Remove Fingerprint",
+                f"Are you sure you want to remove the fingerprint for {staff_name}?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                success, message = self.fingerprint_manager.remove_fingerprint(staff_code)
+                
+                if success:
+                    self.msg(f"Fingerprint removed for {staff_name}.", "info", "Success")
+                    logging.info(f"Fingerprint removed for {staff_name} ({staff_code})")
+                    
+                    # Refresh the dialog
+                    parent_dialog.close()
+                    self.open_fingerprint_management()
+                else:
+                    self.msg(f"Error removing fingerprint: {message}", "warning", "Error")
+                    
+        except Exception as e:
+            self.msg(f"Error removing fingerprint: {str(e)}", "warning", "Error")
+            logging.error(f"Error removing fingerprint for {staff_code}: {e}")
+
+    def test_fingerprint_device(self):
+        """Test the fingerprint device connection."""
+        try:
+            detected, message = detect_digitalPersona_device()
+            
+            if detected:
+                self.msg(f"Device test successful: {message}", "info", "Device Test")
+            else:
+                self.msg(f"Device test failed: {message}", "warning", "Device Test")
+                
+        except Exception as e:
+            self.msg(f"Error testing device: {str(e)}", "warning", "Error")
+
+    def refresh_fingerprint_management(self, dialog):
+        """Refresh the fingerprint management dialog."""
+        dialog.close()
+        self.open_fingerprint_management()
 
 if __name__ == '__main__':
     get_os_specific_path()
