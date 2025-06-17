@@ -4,7 +4,6 @@ import sqlite3
 import datetime
 import random
 import socket
-import keyboard
 import calendar
 import pyglet
 from functools import partial
@@ -785,6 +784,7 @@ class StaffClockInOutSystem(QMainWindow):
         self.clock_timer = QTimer(self)
         self.clock_timer.timeout.connect(self.update_time)
         self.clock_timer.start(1000)
+        
 
         # Load settings
         self.settings = self.load_settings()
@@ -947,21 +947,41 @@ class StaffClockInOutSystem(QMainWindow):
             archive_files = []
             if os.path.exists(self.archive_folder):
                 for filename in os.listdir(self.archive_folder):
-                    if filename.startswith("database_archive_") and filename.endswith(".db"):
+                    if filename.endswith(".db") and ("archive" in filename.lower()):
                         file_path = os.path.join(self.archive_folder, filename)
-                        # Extract date from filename
-                        date_part = filename.replace("database_archive_", "").replace(".db", "")
-                        try:
-                            archive_date = datetime.strptime(date_part, "%Y-%m-%d_%H-%M-%S")
-                            archive_files.append({
-                                'filename': filename,
-                                'path': file_path,
-                                'date': archive_date,
-                                'size': os.path.getsize(file_path)
-                            })
-                        except ValueError:
-                            # Skip files that don't match our naming convention
-                            continue
+                        
+                        # Handle different archive naming patterns
+                        date_part = None
+                        if filename.startswith("database_archive_"):
+                            date_part = filename.replace("database_archive_", "").replace(".db", "")
+                        elif filename.startswith("manual_archive_"):
+                            date_part = filename.replace("manual_archive_", "").replace(".db", "")
+                        
+                        if date_part:
+                            try:
+                                archive_date = datetime.strptime(date_part, "%Y-%m-%d_%H-%M-%S")
+                                archive_files.append({
+                                    'filename': filename,
+                                    'path': file_path,
+                                    'date': archive_date,
+                                    'size': os.path.getsize(file_path),
+                                    'type': 'Manual' if filename.startswith("manual_") else 'Automatic'
+                                })
+                            except ValueError:
+                                # Try alternative date formats or skip
+                                try:
+                                    # Handle any other potential date formats
+                                    file_stat = os.path.getmtime(file_path)
+                                    archive_date = datetime.fromtimestamp(file_stat)
+                                    archive_files.append({
+                                        'filename': filename,
+                                        'path': file_path,
+                                        'date': archive_date,
+                                        'size': os.path.getsize(file_path),
+                                        'type': 'Unknown'
+                                    })
+                                except:
+                                    continue
             
             # Sort by date (newest first)
             archive_files.sort(key=lambda x: x['date'], reverse=True)
@@ -2096,7 +2116,8 @@ class StaffClockInOutSystem(QMainWindow):
             ("Add Comment", self.COLORS['purple'], self.add_comment, 4, 0),
             ("Archive Management", self.COLORS['warning'], self.open_archive_management, 4, 1),
             ("Fingerprint Management", self.COLORS['success'], self.open_fingerprint_management, 5, 0),
-            ("Exit", self.COLORS['danger'], self.admin_tab.close, 5, 1)
+            ("Database Maintenance", self.COLORS['gray'], self.open_database_maintenance, 5, 1),
+            ("Exit", self.COLORS['danger'], self.admin_tab.close, 6, 0)
         ]
 
         # Create and add buttons to grid
@@ -3947,8 +3968,8 @@ class StaffClockInOutSystem(QMainWindow):
             layout.addWidget(no_archives_label)
         else:
             # Create table for archives
-            table = QTableWidget(len(archives), 4)
-            table.setHorizontalHeaderLabels(["Archive Date", "Filename", "Size (KB)", "Actions"])
+            table = QTableWidget(len(archives), 5)
+            table.setHorizontalHeaderLabels(["Archive Date", "Type", "Filename", "Size (KB)", "Actions"])
             table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
             table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
             table.setFont(QFont("Inter", 11))
@@ -3957,10 +3978,12 @@ class StaffClockInOutSystem(QMainWindow):
             for row, archive in enumerate(archives):
                 date_str = archive['date'].strftime('%Y-%m-%d %H:%M:%S')
                 size_kb = archive['size'] / 1024
+                archive_type = archive.get('type', 'Unknown')
 
                 table.setItem(row, 0, QTableWidgetItem(date_str))
-                table.setItem(row, 1, QTableWidgetItem(archive['filename']))
-                table.setItem(row, 2, QTableWidgetItem(f"{size_kb:.1f}"))
+                table.setItem(row, 1, QTableWidgetItem(archive_type))
+                table.setItem(row, 2, QTableWidgetItem(archive['filename']))
+                table.setItem(row, 3, QTableWidgetItem(f"{size_kb:.1f}"))
 
                 # Action buttons container
                 actions_widget = QWidget()
@@ -3980,7 +4003,7 @@ class StaffClockInOutSystem(QMainWindow):
 
                 actions_layout.addWidget(view_button)
                 actions_layout.addWidget(delete_button)
-                table.setCellWidget(row, 3, actions_widget)
+                table.setCellWidget(row, 4, actions_widget)
 
             layout.addWidget(table)
 
@@ -4014,8 +4037,76 @@ class StaffClockInOutSystem(QMainWindow):
         archive_dialog.exec()
 
     def view_archive_database(self, archive_path):
-        """View the contents of an archived database."""
+        """View the contents of an archived database with detailed information."""
         try:
+            # Create archive viewer dialog
+            archive_viewer = QDialog(self)
+            archive_viewer.setWindowTitle(f"Archive Database Viewer - {os.path.basename(archive_path)}")
+            archive_viewer.setFixedSize(1000, 700)
+            archive_viewer.setStyleSheet(f"""
+                QDialog {{
+                    background: {self.COLORS['dark']};
+                    color: {self.COLORS['light']};
+                }}
+                QLabel {{
+                    color: {self.COLORS['light']};
+                    font-family: Inter;
+                }}
+                QTableWidget {{
+                    background: {self.COLORS['dark']};
+                    color: {self.COLORS['light']};
+                    border: none;
+                    gridline-color: {self.COLORS['gray']};
+                }}
+                QTableWidget::item {{
+                    padding: 8px;
+                }}
+                QTableWidget::item:selected {{
+                    background: {self.COLORS['primary']};
+                }}
+                QHeaderView::section {{
+                    background: {self.COLORS['primary']};
+                    color: {self.COLORS['light']};
+                    padding: 8px;
+                    border: none;
+                }}
+                QPushButton {{
+                    background: {self.COLORS['primary']};
+                    color: {self.COLORS['light']};
+                    border: none;
+                    border-radius: 5px;
+                    padding: 10px;
+                    min-width: 100px;
+                }}
+                QPushButton:hover {{
+                    background: {self.COLORS['primary']}dd;
+                }}
+                QTabWidget::pane {{
+                    border: 1px solid {self.COLORS['gray']};
+                    background: {self.COLORS['dark']};
+                }}
+                QTabBar::tab {{
+                    background: {self.COLORS['gray']};
+                    color: {self.COLORS['light']};
+                    padding: 8px 16px;
+                    margin-right: 2px;
+                }}
+                QTabBar::tab:selected {{
+                    background: {self.COLORS['primary']};
+                }}
+            """)
+
+            layout = QVBoxLayout(archive_viewer)
+            layout.setSpacing(10)
+            layout.setContentsMargins(20, 20, 20, 20)
+
+            # Title
+            title_label = QLabel(f"Archive Database: {os.path.basename(archive_path)}")
+            title_label.setFont(QFont("Inter", 16, QFont.Weight.Bold))
+            title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(title_label)
+
+            # Connect to archive database
             conn = sqlite3.connect(archive_path)
             cursor = conn.cursor()
             
@@ -4026,21 +4117,139 @@ class StaffClockInOutSystem(QMainWindow):
             cursor.execute("SELECT COUNT(*) FROM clock_records")
             records_count = cursor.fetchone()[0]
             
-            cursor.execute("SELECT COUNT(*) FROM visitors")
-            visitors_count = cursor.fetchone()[0]
+            # Check if visitors table exists
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='visitors'")
+            visitors_table_exists = cursor.fetchone() is not None
+            visitors_count = 0
+            if visitors_table_exists:
+                cursor.execute("SELECT COUNT(*) FROM visitors")
+                visitors_count = cursor.fetchone()[0]
+
+            # Summary section
+            summary_text = f"Staff Members: {staff_count} | Clock Records: {records_count} | Visitor Records: {visitors_count}"
+            summary_label = QLabel(summary_text)
+            summary_label.setFont(QFont("Inter", 12))
+            summary_label.setStyleSheet(f"color: {self.COLORS['light']}; padding: 10px; background: {self.COLORS['gray']}; border-radius: 5px;")
+            summary_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(summary_label)
+
+            # Create tab widget for different data views
+            tab_widget = QTabWidget()
+            
+            # Staff tab
+            staff_tab = QWidget()
+            staff_layout = QVBoxLayout(staff_tab)
+            
+            if staff_count > 0:
+                cursor.execute("SELECT code, name, role, notes FROM staff ORDER BY name")
+                staff_data = cursor.fetchall()
+                
+                staff_table = QTableWidget(len(staff_data), 4)
+                staff_table.setHorizontalHeaderLabels(["Code", "Name", "Role", "Notes"])
+                staff_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+                staff_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+                
+                for row, (code, name, role, notes) in enumerate(staff_data):
+                    staff_table.setItem(row, 0, QTableWidgetItem(str(code)))
+                    staff_table.setItem(row, 1, QTableWidgetItem(str(name)))
+                    staff_table.setItem(row, 2, QTableWidgetItem(str(role) if role else ""))
+                    staff_table.setItem(row, 3, QTableWidgetItem(str(notes) if notes else ""))
+                
+                staff_layout.addWidget(staff_table)
+            else:
+                no_staff_label = QLabel("No staff records found in this archive.")
+                no_staff_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                staff_layout.addWidget(no_staff_label)
+            
+            tab_widget.addTab(staff_tab, "Staff")
+            
+            # Clock Records tab
+            records_tab = QWidget()
+            records_layout = QVBoxLayout(records_tab)
+            
+            if records_count > 0:
+                cursor.execute("""
+                    SELECT s.name, c.clock_in_time, c.clock_out_time, c.notes, c.break_time 
+                    FROM clock_records c 
+                    LEFT JOIN staff s ON c.staff_code = s.code 
+                    ORDER BY c.clock_in_time DESC 
+                    LIMIT 100
+                """)
+                records_data = cursor.fetchall()
+                
+                records_table = QTableWidget(len(records_data), 5)
+                records_table.setHorizontalHeaderLabels(["Staff Name", "Clock In", "Clock Out", "Notes", "Break Time"])
+                records_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+                records_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+                
+                for row, (name, clock_in, clock_out, notes, break_time) in enumerate(records_data):
+                    records_table.setItem(row, 0, QTableWidgetItem(str(name) if name else "Unknown"))
+                    records_table.setItem(row, 1, QTableWidgetItem(str(clock_in) if clock_in else ""))
+                    records_table.setItem(row, 2, QTableWidgetItem(str(clock_out) if clock_out else ""))
+                    records_table.setItem(row, 3, QTableWidgetItem(str(notes) if notes else ""))
+                    records_table.setItem(row, 4, QTableWidgetItem(str(break_time) if break_time else ""))
+                
+                records_layout.addWidget(records_table)
+                
+                if records_count > 100:
+                    limit_label = QLabel(f"Showing first 100 records out of {records_count} total")
+                    limit_label.setStyleSheet(f"color: {self.COLORS['warning']};")
+                    records_layout.addWidget(limit_label)
+            else:
+                no_records_label = QLabel("No clock records found in this archive.")
+                no_records_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                records_layout.addWidget(no_records_label)
+            
+            tab_widget.addTab(records_tab, "Clock Records")
+            
+            # Visitors tab (if table exists)
+            if visitors_table_exists:
+                visitors_tab = QWidget()
+                visitors_layout = QVBoxLayout(visitors_tab)
+                
+                if visitors_count > 0:
+                    cursor.execute("SELECT name, car_reg, purpose, time_in, time_out FROM visitors ORDER BY time_in DESC LIMIT 50")
+                    visitors_data = cursor.fetchall()
+                    
+                    visitors_table = QTableWidget(len(visitors_data), 5)
+                    visitors_table.setHorizontalHeaderLabels(["Name", "Car Reg", "Purpose", "Time In", "Time Out"])
+                    visitors_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+                    visitors_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+                    
+                    for row, (name, car_reg, purpose, time_in, time_out) in enumerate(visitors_data):
+                        visitors_table.setItem(row, 0, QTableWidgetItem(str(name) if name else ""))
+                        visitors_table.setItem(row, 1, QTableWidgetItem(str(car_reg) if car_reg else ""))
+                        visitors_table.setItem(row, 2, QTableWidgetItem(str(purpose) if purpose else ""))
+                        visitors_table.setItem(row, 3, QTableWidgetItem(str(time_in) if time_in else ""))
+                        visitors_table.setItem(row, 4, QTableWidgetItem(str(time_out) if time_out else ""))
+                    
+                    visitors_layout.addWidget(visitors_table)
+                    
+                    if visitors_count > 50:
+                        limit_label = QLabel(f"Showing first 50 records out of {visitors_count} total")
+                        limit_label.setStyleSheet(f"color: {self.COLORS['warning']};")
+                        visitors_layout.addWidget(limit_label)
+                else:
+                    no_visitors_label = QLabel("No visitor records found in this archive.")
+                    no_visitors_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                    visitors_layout.addWidget(no_visitors_label)
+                
+                tab_widget.addTab(visitors_tab, "Visitors")
+            
+            layout.addWidget(tab_widget)
+            
+            # Close button
+            close_button = QPushButton("Close")
+            close_button.setFont(QFont("Inter", 12))
+            close_button.clicked.connect(archive_viewer.close)
+            
+            button_layout = QHBoxLayout()
+            button_layout.addStretch()
+            button_layout.addWidget(close_button)
+            layout.addLayout(button_layout)
             
             conn.close()
-            
-            # Display summary
-            summary_text = f"""Archive Database Summary:
-            
-Staff Members: {staff_count}
-Clock Records: {records_count}
-Visitor Records: {visitors_count}
-
-Archive Location: {archive_path}"""
-            
-            self.msg(summary_text, "info", "Archive Database Summary")
+            archive_viewer.exec()
             
         except Exception as e:
             self.msg(f"Error reading archive database: {str(e)}", "warning", "Error")
@@ -4349,6 +4558,185 @@ Archive Location: {archive_path}"""
         """Refresh the fingerprint management dialog."""
         dialog.close()
         self.open_fingerprint_management()
+
+    def open_database_maintenance(self):
+        """Opens the database maintenance dialog for cleanup and optimization."""
+        from utils.database_utils import DatabaseCleaner, DatabaseValidator
+        
+        maintenance_dialog = QDialog(self)
+        maintenance_dialog.setWindowTitle("Database Maintenance")
+        maintenance_dialog.setFixedSize(600, 500)
+        maintenance_dialog.setStyleSheet(f"""
+            QDialog {{
+                background: {self.COLORS['dark']};
+                color: {self.COLORS['light']};
+            }}
+            QLabel {{
+                color: {self.COLORS['light']};
+                font-family: Inter;
+            }}
+            QPushButton {{
+                background: {self.COLORS['primary']};
+                color: {self.COLORS['light']};
+                border: none;
+                border-radius: 5px;
+                padding: 12px;
+                min-width: 150px;
+                font-size: 12px;
+            }}
+            QPushButton:hover {{
+                background: {self.COLORS['primary']}dd;
+            }}
+            QPushButton[cleanup="true"] {{
+                background: {self.COLORS['warning']};
+            }}
+            QPushButton[cleanup="true"]:hover {{
+                background: {self.COLORS['warning']}dd;
+            }}
+            QPushButton[danger="true"] {{
+                background: {self.COLORS['danger']};
+            }}
+            QPushButton[danger="true"]:hover {{
+                background: {self.COLORS['danger']}dd;
+            }}
+            QTextEdit {{
+                background: {self.COLORS['gray']};
+                color: {self.COLORS['light']};
+                border: 1px solid {self.COLORS['primary']};
+                border-radius: 5px;
+                padding: 10px;
+            }}
+        """)
+
+        layout = QVBoxLayout(maintenance_dialog)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Title
+        title_label = QLabel("Database Maintenance & Cleanup")
+        title_label.setFont(QFont("Inter", 16, QFont.Weight.Bold))
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+
+        # Description
+        desc_label = QLabel("Maintain database integrity and optimize performance")
+        desc_label.setFont(QFont("Inter", 12))
+        desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        desc_label.setStyleSheet(f"color: {self.COLORS['gray']};")
+        layout.addWidget(desc_label)
+
+        # Results area
+        results_area = QTextEdit()
+        results_area.setMaximumHeight(150)
+        results_area.setPlaceholderText("Maintenance results will appear here...")
+        layout.addWidget(results_area)
+
+        # Initialize utilities
+        cleaner = DatabaseCleaner(self.database_path)
+        validator = DatabaseValidator(self.database_path)
+
+        # Maintenance buttons
+        button_layout = QVBoxLayout()
+        button_layout.setSpacing(10)
+
+        # Validation buttons
+        validate_structure_btn = QPushButton("Validate Database Structure")
+        validate_structure_btn.clicked.connect(lambda: self.run_maintenance_task(
+            validator.validate_tables, "Database Structure Validation", results_area
+        ))
+
+        validate_data_btn = QPushButton("Validate Data Consistency")
+        validate_data_btn.clicked.connect(lambda: self.run_maintenance_task(
+            validator.validate_data_consistency, "Data Consistency Validation", results_area
+        ))
+
+        # Optimization buttons
+        vacuum_btn = QPushButton("Optimize Database (VACUUM)")
+        vacuum_btn.setProperty("cleanup", "true")
+        vacuum_btn.clicked.connect(lambda: self.run_maintenance_task(
+            cleaner.vacuum_database, "Database Optimization", results_area
+        ))
+
+        integrity_btn = QPushButton("Check Database Integrity")
+        integrity_btn.clicked.connect(lambda: self.run_maintenance_task(
+            cleaner.check_database_integrity, "Database Integrity Check", results_area
+        ))
+
+        # Cleanup buttons
+        reset_records_btn = QPushButton("Reset Clock Records (Keep Staff)")
+        reset_records_btn.setProperty("danger", "true")
+        reset_records_btn.clicked.connect(lambda: self.confirm_and_run_maintenance(
+            lambda: cleaner.reset_database(keep_staff=True),
+            "Reset Clock Records",
+            "This will delete all clock records but keep staff data. Continue?",
+            results_area,
+            maintenance_dialog
+        ))
+
+        # Add buttons to layout
+        button_layout.addWidget(validate_structure_btn)
+        button_layout.addWidget(validate_data_btn)
+        button_layout.addWidget(integrity_btn)
+        button_layout.addWidget(vacuum_btn)
+        button_layout.addWidget(reset_records_btn)
+
+        layout.addLayout(button_layout)
+
+        # Close button
+        close_button_layout = QHBoxLayout()
+        close_button = QPushButton("Close")
+        close_button.clicked.connect(maintenance_dialog.close)
+        close_button_layout.addStretch()
+        close_button_layout.addWidget(close_button)
+        layout.addLayout(close_button_layout)
+
+        maintenance_dialog.exec()
+
+    def run_maintenance_task(self, task_func, task_name, results_area):
+        """Run a maintenance task and display results."""
+        try:
+            results_area.append(f"\n--- {task_name} ---")
+            results_area.append("Running...")
+            
+            # Process events to update UI
+            QApplication.processEvents()
+            
+            success, result = task_func()
+            
+            if success:
+                if isinstance(result, list):
+                    if result:  # Has validation issues
+                        results_area.append("❌ Issues found:")
+                        for issue in result:
+                            results_area.append(f"  • {issue}")
+                    else:  # No issues
+                        results_area.append("✅ No issues found")
+                else:
+                    results_area.append(f"✅ {result}")
+            else:
+                if isinstance(result, list):
+                    results_area.append("❌ Issues found:")
+                    for issue in result:
+                        results_area.append(f"  • {issue}")
+                else:
+                    results_area.append(f"❌ {result}")
+                    
+        except Exception as e:
+            results_area.append(f"❌ Error: {str(e)}")
+            logging.error(f"Maintenance task error: {e}")
+
+    def confirm_and_run_maintenance(self, task_func, task_name, confirmation_msg, results_area, parent_dialog):
+        """Confirm and run a potentially destructive maintenance task."""
+        reply = QMessageBox.question(
+            parent_dialog,
+            f"Confirm {task_name}",
+            confirmation_msg,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self.run_maintenance_task(task_func, task_name, results_area)
 
 if __name__ == '__main__':
     get_os_specific_path()
