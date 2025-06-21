@@ -53,4 +53,16 @@ The system uses SQLite databases:
 
 ## License
 
-Proprietary software for internal use. 
+Proprietary software for internal use.
+
+## Running the Application
+
+### For Windows:
+Double-click on `run_staffclock.bat`.
+
+### For macOS/Linux:
+1. Open a terminal.
+2. Make the script executable: `chmod +x run_staffclock.sh`
+3. Run the script: `./run_staffclock.sh`
+
+## Background Timesheet Monitoring 

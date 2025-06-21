@@ -23,7 +23,7 @@ if not exist "main.py" (
 )
 
 echo Activating virtual environment...
-call venv\Scripts\activate.bat
+call venv\\Scripts\\activate
 
 echo Checking for Digital Persona fingerprint reader...
 :: Brief pause to let user see the message
@@ -37,7 +37,7 @@ echo ===============================================
 echo.
 
 :: Run the application
-python main.py
+python staffclock\\main.py
 
 :: Check if the application exited with an error
 if %errorLevel% neq 0 (
