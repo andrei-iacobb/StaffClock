@@ -5,7 +5,7 @@ import subprocess
 import time
 from threading import Thread
 from typing import Tuple
-from utils.logging_manager import LoggingManager
+from .logging_manager import LoggingManager
 
 class PrinterManager:
     def __init__(self, printer_ip: str, printer_port: int = 9100, logger: LoggingManager = None):

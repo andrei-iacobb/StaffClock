@@ -15,14 +15,14 @@ from datetime import datetime
 from PyQt6.QtCore import QObject, pyqtSignal, QThread
 
 # Import our real device drivers
-try:
-    from digitalpersona_sdk_simple import DigitalPersonaU4500
-    print("Using DigitalPersona SDK Simple implementation")
-except ImportError:
-    from digitalpersona_simple import DigitalPersonaSimple as DigitalPersonaU4500
-    print("Using simple DigitalPersona implementation")
+# try:
+#     from .digitalpersona_sdk_simple import DigitalPersonaU4500
+#     print("Using DigitalPersona SDK Simple implementation")
+# except ImportError:
+#     from .digitalpersona_simple import DigitalPersonaSimple as DigitalPersonaU4500
+#     print("Using simple DigitalPersona implementation")
 
-from biometric_enrollment import BiometricProfileEnrollment
+# from .biometric_enrollment import BiometricProfileEnrollment
 
 class FingerprintManager(QObject):
     """Manages fingerprint operations using real DigitalPersona device."""

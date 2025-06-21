@@ -41,7 +41,9 @@ from .dailyBackUp import DailyBackUp
 from .utils.logging_manager import LoggingManager
 from .fingerprint_manager import FingerprintManager, detect_digitalPersona_device
 from .progressive_timesheet_generator import (
-    ProgressiveTimesheetGenerator, get_timesheet_date_range
+    start_progressive_timesheet_generation, 
+    ProgressiveTimesheetDialog,
+    ProgressiveTimesheetGenerator
 )
 
 # Application version
@@ -1109,7 +1111,7 @@ class StaffClockInOutSystem(QMainWindow):
     def check_background_monitoring_status(self):
         '''Check and display the status of background timesheet monitoring.'''
         try:
-            from .background_timesheet_monitor import get_background_monitor
+            from background_timesheet_monitor import get_background_monitor
             
             monitor = get_background_monitor()
             
@@ -1150,7 +1152,7 @@ class StaffClockInOutSystem(QMainWindow):
     def stop_background_monitoring(self):
         '''Stop the background timesheet monitoring service.'''
         try:
-            from .background_timesheet_monitor import stop_background_monitoring
+            from background_timesheet_monitor import stop_background_monitoring
             
             stop_background_monitoring()
             
@@ -2649,7 +2651,7 @@ class StaffClockInOutSystem(QMainWindow):
     def refresh_monitoring_display(self):
         """Refresh the monitoring display."""
         try:
-            from .background_timesheet_monitor import get_background_monitor
+            from background_timesheet_monitor import get_background_monitor
             
             monitor = get_background_monitor()
             
@@ -5147,7 +5149,7 @@ class StaffClockInOutSystem(QMainWindow):
 
     def open_database_maintenance(self):
         """Opens the database maintenance dialog for cleanup and optimization."""
-        from .utils.database_utils import DatabaseCleaner, DatabaseValidator
+        from utils.database_utils import DatabaseCleaner, DatabaseValidator
         
         maintenance_dialog = QDialog(self)
         maintenance_dialog.setWindowTitle("Database Maintenance")
