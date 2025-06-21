@@ -15,8 +15,8 @@ if not exist "venv\Scripts\python.exe" (
 )
 
 :: Check if main application file exists
-if not exist "main.py" (
-    echo ERROR: main.py not found!
+if not exist "staffclock\main.py" (
+    echo ERROR: staffclock\main.py not found!
     echo Please ensure you're running this from the StaffClock application directory.
     pause
     exit /b 1
@@ -37,7 +37,7 @@ echo ===============================================
 echo.
 
 :: Run the application
-python staffclock\\main.py
+python -m staffclock.main
 
 :: Check if the application exited with an error
 if %errorLevel% neq 0 (

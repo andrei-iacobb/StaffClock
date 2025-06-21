@@ -68,13 +68,13 @@ logger = None
 def get_os_specific_path():
     global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logoPath, logger
 
-    # Get the base directory where the script is located
-    base_path = os.path.dirname(os.path.abspath(__file__))
+    # Use the user's home directory to store application data
+    # This is more robust and avoids permissions issues in Program Files
+    home_dir = os.path.expanduser("~")
+    base_path = os.path.join(home_dir, "StaffClock_Data")
 
-    if not os.path.exists(base_path):
-        raise FileNotFoundError("Base directory does not exist.")
-
-    program_data_path = os.path.join(base_path, "ProgramData")
+    # The original "ProgramData" is now the base path
+    program_data_path = base_path 
     tempPath = os.path.join(base_path, "TempData")
     permanentPath = os.path.join(base_path, "Timesheets")
     backup_folder = os.path.join(base_path, "Backups")
@@ -102,6 +102,9 @@ def get_os_specific_path():
 
     check_and_restore_file(databasePath, backup_folder, generate_default_database)
     check_and_restore_file(settingsFilePath, backup_folder, lambda path: generate_default_settings(path, rect))
+    # Logo is optional - check for it, but don't crash if it's missing.
+    # The application will copy it from a source location if it exists.
+    check_and_restore_file(logoPath, backup_folder, generate_default=None, is_critical=False)
 
 
 def check_and_restore_folder(folder_path, backup_folder):
@@ -130,7 +133,16 @@ def check_and_restore_folder(folder_path, backup_folder):
     logging.warning(f"No backup found for folder '{folder_path}'. Creating new folder.")
     os.makedirs(folder_path, exist_ok=True)
 
-def check_and_restore_file(primary_path, backup_folder, generate_default=None):
+def check_and_restore_file(primary_path, backup_folder, generate_default=None, is_critical=True):
+    """
+    Checks if a primary file exists. If not, it attempts to restore from the latest backup.
+    If no backup is found, it can generate a default file.
+    Args:
+        primary_path (str): The path to the file to check.
+        backup_folder (str): The path to the folder containing zip backups.
+        generate_default (function, optional): A function to call to create a default file.
+        is_critical (bool): If True, the application will exit if the file cannot be found or restored.
+    """
     if os.path.exists(primary_path):
         logging.info(f"File found: {primary_path}")
         return
@@ -151,13 +163,29 @@ def check_and_restore_file(primary_path, backup_folder, generate_default=None):
         except zipfile.BadZipFile:
             logging.error(f"Corrupted zip file: {zip_file}")
 
+    # Handle source file for logo if it's missing from the data directory
     if primary_path == logoPath:
-        logging.error(f"Critical: Logo file not found in {primary_path} or backups.")
-        raise FileNotFoundError(f"Logo file missing and no backups available in {backup_folder}.")
+        source_logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Logo.png")
+        if os.path.exists(source_logo_path):
+            try:
+                shutil.copy2(source_logo_path, primary_path)
+                logging.info(f"Copied default logo from {source_logo_path} to {primary_path}")
+                return
+            except Exception as e:
+                logging.error(f"Failed to copy logo file: {e}")
 
     if generate_default:
         logging.warning(f"No backup found for {primary_path}. Generating default.")
         generate_default(primary_path)
+        return
+
+    if is_critical:
+        logging.error(f"CRITICAL: Required file not found: {primary_path}. No backup available.")
+        # In a real GUI app, you might show a message box here before exiting.
+        QMessageBox.critical(None, "Critical File Missing", f"A critical file is missing and could not be restored from backup:\n\n{primary_path}\n\nThe application cannot continue.")
+        sys.exit(1)
+    else:
+        logging.warning(f"Optional file not found: {primary_path}. Continuing without it.")
 
 def generate_default_database(path):
     conn = sqlite3.connect(path)
@@ -1179,53 +1207,51 @@ class StaffClockInOutSystem(QMainWindow):
 
     def setup_ui(self):
         # Ensure central widget is persistently defined
-        if not hasattr(self, "central_widget") or self.central_widget is None:
-            self.central_widget = QWidget()
-            self.setCentralWidget(self.central_widget)
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
 
-        # Define color scheme
-        self.COLORS = {
-            'primary': '#1a73e8',      # Blue
-            'success': '#34a853',      # Green
-            'danger': '#ea4335',       # Red
-            'warning': '#fbbc05',      # Yellow
-            'dark': '#202124',         # Dark gray
-            'light': '#ffffff',        # White
-            'gray': '#5f6368',         # Medium gray
-            'purple': '#9334e8',       # Purple for visitor
-            'brown': '#795548',        # Brown for admin
-        }
+        # Main layout
+        main_layout = QVBoxLayout(self.central_widget)
 
-        # Main layout with proper margins
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(20)
-        main_layout.setContentsMargins(40, 20, 40, 20)
-        self.central_widget.setLayout(main_layout)
+        # Header with Logo and Title
+        header_layout = QHBoxLayout()
+        
+        # --- Logo ---
+        self.logo_label = QLabel()
+        if os.path.exists(logoPath):
+            pixmap = QPixmap(logoPath)
+            if not pixmap.isNull():
+                 self.logo_label.setPixmap(pixmap.scaled(150, 150, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            else:
+                logging.warning(f"Failed to load logo image from {logoPath}")
+        else:
+            logging.warning(f"Logo file not found at {logoPath}, displaying placeholder.")
+            # Optionally set a placeholder color or text
+            self.logo_label.setFixedSize(150, 150)
+            self.logo_label.setText("Logo")
+            self.logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.logo_label.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ccc;")
 
-        # Top layout for clock and logo
-        top_layout = QHBoxLayout()
-        top_layout.setSpacing(20)
+        header_layout.addWidget(self.logo_label)
 
-        # Clock Label with modern font
-        self.clock_label = QLabel()
-        self.clock_label.setFont(QFont("Arial", 64, QFont.Weight.Medium))
-        self.clock_label.setStyleSheet(f"color: {self.COLORS['light']}; margin-bottom: 10px;")
-        self.clock_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.update_time()
+        # Title
+        title_container = QWidget()
+        title_layout = QVBoxLayout(title_container)
+        title_layout.setSpacing(10)
 
-        # Add the clock widget to the top-left
-        top_layout.addWidget(self.clock_label, alignment=Qt.AlignmentFlag.AlignLeft)
+        title_label = QLabel("Staff Digital Timesheet System")
+        title_label.setFont(QFont("Arial", 24, QFont.Weight.Bold))
+        title_layout.addWidget(title_label)
 
-        # Logo Layout (Top-right alignment)
-        logo_label = QLabel()
-        pixmap = QPixmap(logoPath)
-        scaled_pixmap = pixmap.scaled(150, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        logo_label.setPixmap(scaled_pixmap)
-        logo_label.setFixedSize(150, 80)
-        logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        top_layout.addWidget(logo_label, alignment=Qt.AlignmentFlag.AlignRight)
+        subtitle_label = QLabel("Manage your staff timesheets efficiently")
+        subtitle_label.setFont(QFont("Arial", 16))
+        subtitle_layout = QVBoxLayout()
+        subtitle_layout.addWidget(subtitle_label)
+        subtitle_layout.addStretch()
+        title_layout.addLayout(subtitle_layout)
 
-        main_layout.addLayout(top_layout)
+        main_layout.addLayout(header_layout)
+        main_layout.addLayout(title_layout)
 
         # Staff Code Input Section with modern styling
         staff_code_layout = QVBoxLayout()
@@ -1396,7 +1422,7 @@ class StaffClockInOutSystem(QMainWindow):
         button_layout.addWidget(self.exit_button)
 
         main_layout.addLayout(button_layout)
-        button_layout.addLayout(clock_buttons_layout)
+        main_layout.addLayout(clock_buttons_layout)
 
         self.central_widget.installEventFilter(self)
 
