@@ -1,0 +1,9 @@
+{
+    "start_day": 21,
+    "end_day": 20,
+    "printer_IP": "10.60.1.146",
+    "width": 2560,
+    "height": 1409,
+    "admin_pin": "123456",
+    "exit_code": "654321"
+}

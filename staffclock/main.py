@@ -14,6 +14,16 @@ import subprocess
 import platform
 import zipfile
 
+from PyQt6.QtCore import QCoreApplication
+# --- BEGIN HACK for macOS Qt Plugin Path ---
+# On some macOS systems with Homebrew, Qt can't find its platform plugins.
+# This code explicitly adds the likely path to the library paths.
+import sys
+if sys.platform == "darwin":  # darwin is the name for macOS
+    # Path determined from `find /opt/homebrew -name "libqcocoa.dylib"`
+    QCoreApplication.addLibraryPath("/opt/homebrew/Cellar/qt/6.9.0/share/qt/plugins/platforms")
+# --- END HACK ---
+
 import cv2
 import subprocess
 import time

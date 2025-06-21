@@ -23,9 +23,6 @@ pyusb>=1.2.0
 keyboard>=0.13.0
 pyglet>=2.0.0
 
-# Database
-sqlite3  # Built into Python
-
 # Date and Time
 python-dateutil>=2.8.0
 

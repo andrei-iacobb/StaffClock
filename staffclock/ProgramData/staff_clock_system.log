@@ -1,0 +1,133 @@
+2025-06-21 16:04:14 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:04:14 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:04:14 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:04:14 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:04:14
+2025-06-21 16:04:14 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:04:14 [INFO] main:223 - Logging initialized on 2025-06-21
+2025-06-21 16:04:14 [WARNING] main:149 - No backup found for /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db. Generating default.
+2025-06-21 16:04:14 [INFO] main:201 - Default database created at /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:04:14 [WARNING] main:149 - No backup found for /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json. Generating default.
+2025-06-21 16:04:14 [INFO] main:215 - Default settings file created at /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:04:14 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:04:14 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:04:14 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:04:14 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:04:14
+2025-06-21 16:04:14 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:04:14 [INFO] main:223 - Logging initialized on 2025-06-21
+2025-06-21 16:04:14 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:04:14 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:04:31 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:04:31 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:04:31 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:04:31 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:04:31
+2025-06-21 16:04:31 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:04:31 [INFO] main:223 - Logging initialized on 2025-06-21
+2025-06-21 16:04:31 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:04:31 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:04:31 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:04:31 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:04:31 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:04:31 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:04:31
+2025-06-21 16:04:31 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:04:31 [INFO] main:223 - Logging initialized on 2025-06-21
+2025-06-21 16:04:31 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:04:31 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:09:39 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:09:39 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:09:39 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:09:39 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:09:39
+2025-06-21 16:09:39 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:09:39 [INFO] main:223 - Logging initialized on 2025-06-21
+2025-06-21 16:09:39 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:09:39 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:09:39 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:09:39 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:09:39 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:09:39 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:09:39
+2025-06-21 16:09:39 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:09:39 [INFO] main:223 - Logging initialized on 2025-06-21
+2025-06-21 16:09:39 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:09:39 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:10:02 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:10:02 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:10:02 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:10:02 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:10:02
+2025-06-21 16:10:02 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:10:02 [INFO] main:223 - Logging initialized on 2025-06-21
+2025-06-21 16:10:02 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:10:02 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:10:02 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:10:02 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:10:02 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:10:02 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:10:02
+2025-06-21 16:10:02 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:10:02 [INFO] main:223 - Logging initialized on 2025-06-21
+2025-06-21 16:10:02 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:10:02 [INFO] main:125 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:10:38 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:10:38 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:10:38 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:10:38 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:10:38
+2025-06-21 16:10:38 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:10:38 [INFO] main:233 - Logging initialized on 2025-06-21
+2025-06-21 16:10:38 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:10:38 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:10:38 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:10:38 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:10:38 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:10:38 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:10:38
+2025-06-21 16:10:38 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:10:38 [INFO] main:233 - Logging initialized on 2025-06-21
+2025-06-21 16:10:38 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:10:38 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:11:16 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:11:16 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:11:16 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:11:16 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:11:16
+2025-06-21 16:11:16 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:11:16 [INFO] main:233 - Logging initialized on 2025-06-21
+2025-06-21 16:11:16 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:11:16 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:11:16 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:11:16 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:11:16 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:11:16 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:11:16
+2025-06-21 16:11:16 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:11:16 [INFO] main:233 - Logging initialized on 2025-06-21
+2025-06-21 16:11:16 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:11:16 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:12:33 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:12:33 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:12:33 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:12:33 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:12:33
+2025-06-21 16:12:33 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:12:33 [INFO] main:233 - Logging initialized on 2025-06-21
+2025-06-21 16:12:33 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:12:33 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:12:33 [INFO] logging_manager:52 - ==================================================
+2025-06-21 16:12:33 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-21 16:12:33 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-21 16:12:33 [INFO] logging_manager:55 - Startup time: 2025-06-21 16:12:33
+2025-06-21 16:12:33 [INFO] logging_manager:56 - ==================================================
+2025-06-21 16:12:33 [INFO] main:233 - Logging initialized on 2025-06-21
+2025-06-21 16:12:33 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-21 16:12:33 [INFO] main:135 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-21 16:12:33 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-21 16:12:33 [INFO] main:3952 - Updated screen dimensions in settings: 2560x1409
+2025-06-21 16:12:33 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 2560x1409
+2025-06-21 16:12:33 [INFO] main:743 - UI setup complete.
+2025-06-21 16:12:33 [INFO] main:1025 - Visitors table checked/created successfully
+2025-06-21 16:12:33 [INFO] main:854 - Real-time backup database initialized successfully
+2025-06-21 16:12:33 [INFO] fingerprint_manager:105 - Fingerprint tables initialized in main database
+2025-06-21 16:12:33 [INFO] fingerprint_manager:68 - FingerprintManager initialized with real device support
+2025-06-21 16:12:33 [WARNING] fingerprint_manager:31 - MOCK FINGERPRINT: Device connection called, but device is not available.
+2025-06-21 16:12:33 [ERROR] fingerprint_manager:126 - Failed to connect to DigitalPersona U.are.U 4500 device
+2025-06-21 16:12:33 [WARNING] main:777 - Fingerprint device not available: Failed to connect to DigitalPersona U.are.U 4500 device
+2025-06-21 16:12:34 [INFO] main:809 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 2560, 'height': 1409, 'admin_pin': '123456', 'exit_code': '654321'}
+2025-06-21 16:12:34 [INFO] main:812 - Initializing TimesheetCheckerThread...
+2025-06-21 16:12:34 [INFO] main:818 - StaffClockInOutSystem initialization complete
+2025-06-21 16:21:12 [INFO] main:2131 - Opening admin tab
+2025-06-21 16:21:28 [INFO] logging_manager:60 - ==================================================
+2025-06-21 16:21:28 [INFO] logging_manager:61 - Application Shutting Down
+2025-06-21 16:21:28 [INFO] logging_manager:62 - Shutdown time: 2025-06-21 16:21:28
+2025-06-21 16:21:28 [INFO] logging_manager:63 - ==================================================

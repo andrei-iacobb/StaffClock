@@ -24,6 +24,27 @@ from PyQt6.QtCore import QObject, pyqtSignal, QThread
 
 # from .biometric_enrollment import BiometricProfileEnrollment
 
+# --- Mock/Stub Classes since real drivers are missing ---
+
+class MockDigitalPersona:
+    def connect(self):
+        logging.warning("MOCK FINGERPRINT: Device connection called, but device is not available.")
+        return False
+    def disconnect(self):
+        pass
+
+class MockBiometricEnrollment:
+    def connect_device(self):
+        logging.warning("MOCK FINGERPRINT: Enrollment connection called, but device is not available.")
+        return False
+    def enroll_biometric_profile(self, *args, **kwargs):
+        return False, "Fingerprint device not configured.", {}
+    def disconnect(self):
+        pass
+
+# --- End Mock/Stub Classes ---
+
+
 class FingerprintManager(QObject):
     """Manages fingerprint operations using real DigitalPersona device."""
     
@@ -35,8 +56,10 @@ class FingerprintManager(QObject):
     def __init__(self, db_path: str = "staff_timesheet.db"):
         super().__init__()
         self.db_path = db_path
-        self.device = DigitalPersonaU4500()
-        self.enrollment_system = BiometricProfileEnrollment()
+        # self.device = DigitalPersonaU4500()
+        # self.enrollment_system = BiometricProfileEnrollment()
+        self.device = MockDigitalPersona()
+        self.enrollment_system = MockBiometricEnrollment()
         self.is_initialized = False
         
         # Initialize fingerprint tables in main database
