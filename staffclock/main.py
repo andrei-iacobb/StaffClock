@@ -24,7 +24,7 @@ if sys.platform == "darwin":  # darwin is the name for macOS
     QCoreApplication.addLibraryPath("/opt/homebrew/Cellar/qt/6.9.0/share/qt/plugins/platforms")
 # --- END HACK ---
 
-import cv2
+
 import subprocess
 import time
 import sys
@@ -55,6 +55,179 @@ from .progressive_timesheet_generator import (
     ProgressiveTimesheetDialog,
     ProgressiveTimesheetGenerator
 )
+
+# Application version
+APP_VERSION = "1.0.0"
+
+# Global Paths
+tempPath = permanentPath = databasePath = settingsFilePath = log_file = logoPath = ""
+
+# Initialize logging manager
+logger = None
+
+def get_os_specific_path():
+    global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logoPath, logger
+
+    # Use the user's home directory to store application data
+    # This is more robust and avoids permissions issues in Program Files
+    home_dir = os.path.expanduser("~")
+    base_path = os.path.join(home_dir, "StaffClock_Data")
+
+    # The original "ProgramData" is now the base path
+    program_data_path = base_path 
+    tempPath = os.path.join(base_path, "TempData")
+    permanentPath = os.path.join(base_path, "Timesheets")
+    backup_folder = os.path.join(base_path, "Backups")
+
+    for folder in [program_data_path, tempPath, permanentPath, backup_folder]:
+        os.makedirs(folder, exist_ok=True)
+
+    settingsFilePath = os.path.join(program_data_path, "settings.json")
+    log_file = os.path.join(program_data_path, "staff_clock_system.log")
+    logoPath = os.path.join(program_data_path, "Logo.png")
+    databasePath = os.path.join(program_data_path, "staff_hours.db")
+
+    # Initialize logging manager
+    logger = LoggingManager(log_file)
+    logger.log_startup(APP_VERSION)
+
+    configure_logging()
+
+    # Get screen dimensions before checking files
+    app = QApplication.instance() or QApplication(sys.argv)
+    screen = app.primaryScreen()
+    if screen:
+        rect = screen.availableGeometry()
+    else:
+        rect = None
+
+    check_and_restore_file(databasePath, backup_folder, generate_default_database)
+    check_and_restore_file(settingsFilePath, backup_folder, lambda path: generate_default_settings(path, rect))
+    # Logo is optional - check for it, but don't crash if it's missing.
+    # The application will copy it from a source location if it exists.
+    check_and_restore_file(logoPath, backup_folder, generate_default=None, is_critical=False)
+
+
+def check_and_restore_file(primary_path, backup_folder, generate_default=None, is_critical=True):
+    """
+    Checks if a primary file exists. If not, it attempts to restore from the latest backup.
+    If no backup is found, it can generate a default file.
+    """
+    if os.path.exists(primary_path):
+        logging.info(f"File found: {primary_path}")
+        return
+
+    zip_files = sorted(
+        [os.path.join(backup_folder, f) for f in os.listdir(backup_folder) if f.endswith('.zip')],
+        key=os.path.getmtime,
+        reverse=True
+    )
+
+    for zip_file in zip_files:
+        try:
+            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                if os.path.basename(primary_path) in zip_ref.namelist():
+                    zip_ref.extract(os.path.basename(primary_path), os.path.dirname(primary_path))
+                    logging.info(f"Restored {primary_path} from backup {zip_file}")
+                    return
+        except zipfile.BadZipFile:
+            logging.error(f"Corrupted zip file: {zip_file}")
+
+    # Handle source file for logo if it's missing from the data directory
+    if primary_path == logoPath:
+        source_logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Logo.png")
+        if os.path.exists(source_logo_path):
+            try:
+                shutil.copy2(source_logo_path, primary_path)
+                logging.info(f"Copied default logo from {source_logo_path} to {primary_path}")
+                return
+            except Exception as e:
+                logging.error(f"Failed to copy logo file: {e}")
+
+    if generate_default:
+        logging.warning(f"No backup found for {primary_path}. Generating default.")
+        generate_default(primary_path)
+        return
+
+    if is_critical:
+        logging.error(f"CRITICAL: Required file not found: {primary_path}. No backup available.")
+        QMessageBox.critical(None, "Critical File Missing", f"A critical file is missing and could not be restored from backup:\n\n{primary_path}\n\nThe application cannot continue.")
+        sys.exit(1)
+    else:
+        logging.warning(f"Optional file not found: {primary_path}. Continuing without it.")
+
+def generate_default_database(path):
+    conn = sqlite3.connect(path)
+    c = conn.cursor()
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS staff (
+            name TEXT NOT NULL,
+            code TEXT UNIQUE PRIMARY KEY,
+            fingerprint TEXT,
+            role TEXT,
+            notes TEXT
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS clock_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            staff_code TEXT NOT NULL,
+            clock_in_time TEXT,
+            clock_out_time TEXT,
+            notes TEXT,
+            break_time TEXT,
+            FOREIGN KEY(staff_code) REFERENCES staff(code)
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS archive_records (
+            staff_name TEXT,
+            staff_code TEXT,
+            clock_in TEXT,
+            clock_out TEXT,
+            notes TEXT
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS visitors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            car_reg TEXT,
+            purpose TEXT,
+            time_in TEXT,
+            time_out TEXT
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
+    logging.info(f"Default database created at {path}")
+
+def generate_default_settings(path, rect=None):
+    default_settings = {
+        "start_day": 21,
+        "end_day": 20,
+        "printer_IP": "10.60.1.146",
+        "width": rect.width() if rect else 1920,  # Default fallback width
+        "height": rect.height() if rect else 1080,  # Default fallback height
+        "admin_pin": "123456",
+        "exit_code": "654321"
+    }
+    with open(path, "w") as file:
+        json.dump(default_settings, file, indent=4)
+    logging.info(f"Default settings file created at {path}")
+
+def configure_logging():
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.DEBUG,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+    logging.info(f"Logging initialized on {datetime.now().date()}")
 
 # Application version
 APP_VERSION = "1.0.0"
@@ -773,8 +946,21 @@ class StaffClockInOutSystem(QMainWindow):
         # Ensure visitors table exists
         self.ensure_visitors_table()
 
-
-
+        # Define color scheme for UI components
+        self.COLORS = {
+            'primary': '#1a73e8',      # Blue
+            'success': '#34a853',      # Green
+            'danger': '#ea4335',       # Red
+            'warning': '#fbbc05',      # Yellow
+            'dark': '#202124',         # Dark gray
+            'light': '#ffffff',        # White
+            'gray': '#5f6368',         # Medium gray
+            'text': '#3c4043',         # Text color
+            'border': '#dadce0',       # Border color
+            'purple': '#9c27b0',       # Purple for visitor button
+            'brown': '#795548',        # Brown for admin button
+            'lighter_dark': '#303134', # Lighter dark for sections
+        }
 
         self.isWindowed = False
         # Paths
@@ -1425,6 +1611,22 @@ class StaffClockInOutSystem(QMainWindow):
         main_layout.addLayout(clock_buttons_layout)
 
         self.central_widget.installEventFilter(self)
+
+        # Clock display
+        self.clock_label = QLabel()
+        self.clock_label.setFont(QFont("Arial", 28, QFont.Weight.Bold))
+        self.clock_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.clock_label.setStyleSheet(f"""
+            QLabel {{
+                color: {self.COLORS['light']};
+                background-color: {self.COLORS['lighter_dark']};
+                border: 2px solid {self.COLORS['border']};
+                border-radius: 15px;
+                padding: 20px;
+                margin: 15px;
+            }}
+        """)
+        main_layout.addWidget(self.clock_label)
 
         # Modern footer
         footer = self.create_footer()

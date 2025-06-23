@@ -4,7 +4,7 @@ Fingerprint Manager for DigitalPersona U.are.U 4500
 Real device integration with biometric enrollment and verification.
 """
 
-import cv2
+
 import numpy as np
 import time
 import logging
