@@ -46,11 +46,11 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
-from .timesheetDailyCheck import TimesheetCheckerThread
-from .dailyBackUp import DailyBackUp
-from .utils.logging_manager import LoggingManager
-from .fingerprint_manager import FingerprintManager, detect_digitalPersona_device
-from .progressive_timesheet_generator import (
+from timesheetDailyCheck import TimesheetCheckerThread
+from dailyBackUp import DailyBackUp
+from utils.logging_manager import LoggingManager
+from fingerprint_manager import FingerprintManager, detect_digitalPersona_device
+from progressive_timesheet_generator import (
     start_progressive_timesheet_generation, 
     ProgressiveTimesheetDialog,
     ProgressiveTimesheetGenerator
