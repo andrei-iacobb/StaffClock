@@ -46,11 +46,11 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
-from timesheetDailyCheck import TimesheetCheckerThread
-from dailyBackUp import DailyBackUp
-from utils.logging_manager import LoggingManager
-from fingerprint_manager import FingerprintManager, detect_digitalPersona_device
-from progressive_timesheet_generator import (
+from .timesheetDailyCheck import TimesheetCheckerThread
+from .dailyBackUp import DailyBackUp
+from .utils.logging_manager import LoggingManager
+from .fingerprint_manager import FingerprintManager, detect_digitalPersona_device
+from .progressive_timesheet_generator import (
     start_progressive_timesheet_generation, 
     ProgressiveTimesheetDialog,
     ProgressiveTimesheetGenerator
@@ -60,13 +60,13 @@ from progressive_timesheet_generator import (
 APP_VERSION = "1.0.0"
 
 # Global Paths
-tempPath = permanentPath = databasePath = settingsFilePath = log_file = logoPath = ""
+tempPath = permanentPath = databasePath = settingsFilePath = log_file = ""
 
 # Initialize logging manager
 logger = None
 
 def get_os_specific_path():
-    global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logoPath, logger
+    global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logger
 
     # Use the user's home directory to store application data
     # This is more robust and avoids permissions issues in Program Files
@@ -84,7 +84,6 @@ def get_os_specific_path():
 
     settingsFilePath = os.path.join(program_data_path, "settings.json")
     log_file = os.path.join(program_data_path, "staff_clock_system.log")
-    logoPath = os.path.join(program_data_path, "Logo.png")
     databasePath = os.path.join(program_data_path, "staff_hours.db")
 
     # Initialize logging manager
@@ -103,9 +102,6 @@ def get_os_specific_path():
 
     check_and_restore_file(databasePath, backup_folder, generate_default_database)
     check_and_restore_file(settingsFilePath, backup_folder, lambda path: generate_default_settings(path, rect))
-    # Logo is optional - check for it, but don't crash if it's missing.
-    # The application will copy it from a source location if it exists.
-    check_and_restore_file(logoPath, backup_folder, generate_default=None, is_critical=False)
 
 
 def check_and_restore_file(primary_path, backup_folder, generate_default=None, is_critical=True):
@@ -133,17 +129,6 @@ def check_and_restore_file(primary_path, backup_folder, generate_default=None, i
         except zipfile.BadZipFile:
             logging.error(f"Corrupted zip file: {zip_file}")
 
-    # Handle source file for logo if it's missing from the data directory
-    if primary_path == logoPath:
-        source_logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Logo.png")
-        if os.path.exists(source_logo_path):
-            try:
-                shutil.copy2(source_logo_path, primary_path)
-                logging.info(f"Copied default logo from {source_logo_path} to {primary_path}")
-                return
-            except Exception as e:
-                logging.error(f"Failed to copy logo file: {e}")
-
     if generate_default:
         logging.warning(f"No backup found for {primary_path}. Generating default.")
         generate_default(primary_path)
@@ -151,210 +136,6 @@ def check_and_restore_file(primary_path, backup_folder, generate_default=None, i
 
     if is_critical:
         logging.error(f"CRITICAL: Required file not found: {primary_path}. No backup available.")
-        QMessageBox.critical(None, "Critical File Missing", f"A critical file is missing and could not be restored from backup:\n\n{primary_path}\n\nThe application cannot continue.")
-        sys.exit(1)
-    else:
-        logging.warning(f"Optional file not found: {primary_path}. Continuing without it.")
-
-def generate_default_database(path):
-    conn = sqlite3.connect(path)
-    c = conn.cursor()
-
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS staff (
-            name TEXT NOT NULL,
-            code TEXT UNIQUE PRIMARY KEY,
-            fingerprint TEXT,
-            role TEXT,
-            notes TEXT
-        )
-    ''')
-
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS clock_records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            staff_code TEXT NOT NULL,
-            clock_in_time TEXT,
-            clock_out_time TEXT,
-            notes TEXT,
-            break_time TEXT,
-            FOREIGN KEY(staff_code) REFERENCES staff(code)
-        )
-    ''')
-
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS archive_records (
-            staff_name TEXT,
-            staff_code TEXT,
-            clock_in TEXT,
-            clock_out TEXT,
-            notes TEXT
-        )
-    ''')
-
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS visitors (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            car_reg TEXT,
-            purpose TEXT,
-            time_in TEXT,
-            time_out TEXT
-        )
-    ''')
-
-    conn.commit()
-    conn.close()
-    logging.info(f"Default database created at {path}")
-
-def generate_default_settings(path, rect=None):
-    default_settings = {
-        "start_day": 21,
-        "end_day": 20,
-        "printer_IP": "10.60.1.146",
-        "width": rect.width() if rect else 1920,  # Default fallback width
-        "height": rect.height() if rect else 1080,  # Default fallback height
-        "admin_pin": "123456",
-        "exit_code": "654321"
-    }
-    with open(path, "w") as file:
-        json.dump(default_settings, file, indent=4)
-    logging.info(f"Default settings file created at {path}")
-
-def configure_logging():
-    logging.basicConfig(
-        filename=log_file,
-        level=logging.DEBUG,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-    )
-    logging.info(f"Logging initialized on {datetime.now().date()}")
-
-# Application version
-APP_VERSION = "1.0.0"
-
-# Global Paths
-tempPath = permanentPath = databasePath = settingsFilePath = log_file = logoPath = ""
-
-# Initialize logging manager
-logger = None
-
-def get_os_specific_path():
-    global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logoPath, logger
-
-    # Use the user's home directory to store application data
-    # This is more robust and avoids permissions issues in Program Files
-    home_dir = os.path.expanduser("~")
-    base_path = os.path.join(home_dir, "StaffClock_Data")
-
-    # The original "ProgramData" is now the base path
-    program_data_path = base_path 
-    tempPath = os.path.join(base_path, "TempData")
-    permanentPath = os.path.join(base_path, "Timesheets")
-    backup_folder = os.path.join(base_path, "Backups")
-
-    for folder in [program_data_path, tempPath, permanentPath, backup_folder]:
-        os.makedirs(folder, exist_ok=True)
-
-    settingsFilePath = os.path.join(program_data_path, "settings.json")
-    log_file = os.path.join(program_data_path, "staff_clock_system.log")
-    logoPath = os.path.join(program_data_path, "Logo.png")
-    databasePath = os.path.join(program_data_path, "staff_hours.db")
-
-    # Initialize logging manager
-    logger = LoggingManager(log_file)
-    logger.log_startup(APP_VERSION)
-
-    configure_logging()
-
-    # Get screen dimensions before checking files
-    screen = QApplication.primaryScreen()
-    if screen:
-        rect = screen.availableGeometry()
-    else:
-        rect = None
-
-    check_and_restore_file(databasePath, backup_folder, generate_default_database)
-    check_and_restore_file(settingsFilePath, backup_folder, lambda path: generate_default_settings(path, rect))
-    # Logo is optional - check for it, but don't crash if it's missing.
-    # The application will copy it from a source location if it exists.
-    check_and_restore_file(logoPath, backup_folder, generate_default=None, is_critical=False)
-
-
-def check_and_restore_folder(folder_path, backup_folder):
-    if os.path.exists(folder_path):
-        logging.info(f"Folder found: {folder_path}")
-        return
-
-    zip_files = sorted(
-        [os.path.join(backup_folder, f) for f in os.listdir(backup_folder) if f.endswith('.zip')],
-        key=os.path.getmtime,
-        reverse=True
-    )
-
-    for zip_file in zip_files:
-        try:
-            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-                folder_name = os.path.basename(folder_path)
-                folder_files = [f for f in zip_ref.namelist() if f.startswith(f"{folder_name}/")]
-                if folder_files:
-                    zip_ref.extractall(os.path.dirname(folder_path))
-                    logging.info(f"Restored folder '{folder_path}' from backup '{zip_file}'.")
-                    return
-        except zipfile.BadZipFile:
-            logging.error(f"Corrupted zip file: {zip_file}")
-
-    logging.warning(f"No backup found for folder '{folder_path}'. Creating new folder.")
-    os.makedirs(folder_path, exist_ok=True)
-
-def check_and_restore_file(primary_path, backup_folder, generate_default=None, is_critical=True):
-    """
-    Checks if a primary file exists. If not, it attempts to restore from the latest backup.
-    If no backup is found, it can generate a default file.
-    Args:
-        primary_path (str): The path to the file to check.
-        backup_folder (str): The path to the folder containing zip backups.
-        generate_default (function, optional): A function to call to create a default file.
-        is_critical (bool): If True, the application will exit if the file cannot be found or restored.
-    """
-    if os.path.exists(primary_path):
-        logging.info(f"File found: {primary_path}")
-        return
-
-    zip_files = sorted(
-        [os.path.join(backup_folder, f) for f in os.listdir(backup_folder) if f.endswith('.zip')],
-        key=os.path.getmtime,
-        reverse=True
-    )
-
-    for zip_file in zip_files:
-        try:
-            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-                if os.path.basename(primary_path) in zip_ref.namelist():
-                    zip_ref.extract(os.path.basename(primary_path), os.path.dirname(primary_path))
-                    logging.info(f"Restored {primary_path} from backup {zip_file}")
-                    return
-        except zipfile.BadZipFile:
-            logging.error(f"Corrupted zip file: {zip_file}")
-
-    # Handle source file for logo if it's missing from the data directory
-    if primary_path == logoPath:
-        source_logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Logo.png")
-        if os.path.exists(source_logo_path):
-            try:
-                shutil.copy2(source_logo_path, primary_path)
-                logging.info(f"Copied default logo from {source_logo_path} to {primary_path}")
-                return
-            except Exception as e:
-                logging.error(f"Failed to copy logo file: {e}")
-
-    if generate_default:
-        logging.warning(f"No backup found for {primary_path}. Generating default.")
-        generate_default(primary_path)
-        return
-
-    if is_critical:
-        logging.error(f"CRITICAL: Required file not found: {primary_path}. No backup available.")
-        # In a real GUI app, you might show a message box here before exiting.
         QMessageBox.critical(None, "Critical File Missing", f"A critical file is missing and could not be restored from backup:\n\n{primary_path}\n\nThe application cannot continue.")
         sys.exit(1)
     else:
@@ -995,7 +776,6 @@ class StaffClockInOutSystem(QMainWindow):
             database_path=databasePath,
             log_file_path=log_file,
             settings_path=settingsFilePath,
-            logo_path=logoPath,
         )
 
         self.daily_backup_thread.daily_back_up.connect(self.handle_backup_complete)
@@ -1398,71 +1178,58 @@ class StaffClockInOutSystem(QMainWindow):
 
         # Main layout
         main_layout = QVBoxLayout(self.central_widget)
+        main_layout.setSpacing(5)  # Minimal spacing
+        main_layout.setContentsMargins(10, 0, 10, 10)  # No top margin at all
 
-        # Header with Logo and Title
-        header_layout = QHBoxLayout()
+        # Clock display in top left - no background box
+        clock_container = QHBoxLayout()
+        clock_container.setContentsMargins(0, 0, 0, 0)
         
-        # --- Logo ---
-        self.logo_label = QLabel()
-        if os.path.exists(logoPath):
-            pixmap = QPixmap(logoPath)
-            if not pixmap.isNull():
-                 self.logo_label.setPixmap(pixmap.scaled(150, 150, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-            else:
-                logging.warning(f"Failed to load logo image from {logoPath}")
-        else:
-            logging.warning(f"Logo file not found at {logoPath}, displaying placeholder.")
-            # Optionally set a placeholder color or text
-            self.logo_label.setFixedSize(150, 150)
-            self.logo_label.setText("Logo")
-            self.logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.logo_label.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ccc;")
+        self.clock_label = QLabel()
+        self.clock_label.setFont(QFont("Arial", 50, QFont.Weight.Bold))
+        self.clock_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.clock_label.setStyleSheet(f"""
+            QLabel {{
+                color: {self.COLORS['light']};
+                background: transparent;
+                border: none;
+                padding: 0px;
+                margin: 0px;
+            }}
+        """)
+        
+        clock_container.addWidget(self.clock_label)
+        clock_container.addStretch()  # Push clock to the left
+        main_layout.addLayout(clock_container)
 
-        header_layout.addWidget(self.logo_label)
+        # Add stretch to push staff code section to middle
+        main_layout.addStretch()
 
-        # Title
-        title_container = QWidget()
-        title_layout = QVBoxLayout(title_container)
-        title_layout.setSpacing(10)
-
-        title_label = QLabel("Staff Digital Timesheet System")
-        title_label.setFont(QFont("Arial", 24, QFont.Weight.Bold))
-        title_layout.addWidget(title_label)
-
-        subtitle_label = QLabel("Manage your staff timesheets efficiently")
-        subtitle_label.setFont(QFont("Arial", 16))
-        subtitle_layout = QVBoxLayout()
-        subtitle_layout.addWidget(subtitle_label)
-        subtitle_layout.addStretch()
-        title_layout.addLayout(subtitle_layout)
-
-        main_layout.addLayout(header_layout)
-        main_layout.addLayout(title_layout)
-
-        # Staff Code Input Section with modern styling
+        # Staff Code Input Section - centered in middle
         staff_code_layout = QVBoxLayout()
-        staff_code_layout.setSpacing(15)
+        staff_code_layout.setSpacing(8)
+        staff_code_layout.setContentsMargins(0, 0, 0, 0)
         
         staff_code_label = QLabel("Enter Staff Code")
-        staff_code_label.setFont(QFont("Arial", 38, QFont.Weight.Medium))
+        staff_code_label.setFont(QFont("Arial", 32, QFont.Weight.Medium))
         staff_code_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        staff_code_label.setStyleSheet(f"color: {self.COLORS['light']};")
+        staff_code_label.setStyleSheet(f"color: {self.COLORS['light']}; margin: 5px;")
 
         self.staff_code_entry = QLineEdit()
-        self.staff_code_entry.setFont(QFont("Arial", 26))
+        self.staff_code_entry.setFont(QFont("Arial", 28))
         self.staff_code_entry.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.staff_code_entry.setPlaceholderText("Enter your 4-digit code")
         self.staff_code_entry.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {self.COLORS['dark']};
                 color: {self.COLORS['light']};
-                border: 2px solid {self.COLORS['gray']};
-                border-radius: 10px;
-                padding: 15px;
-                margin: 10px 0px;
+                border: 3px solid {self.COLORS['gray']};
+                border-radius: 12px;
+                padding: 18px;
+                margin: 5px;
             }}
             QLineEdit:focus {{
-                border: 2px solid {self.COLORS['primary']};
+                border: 3px solid {self.COLORS['primary']};
             }}
         """)
         self.staff_code_entry.textChanged.connect(self.on_staff_code_change)
@@ -1470,44 +1237,49 @@ class StaffClockInOutSystem(QMainWindow):
         self.greeting_label = QLabel("")
         self.greeting_label.setFont(QFont("Arial", 20, QFont.Weight.Medium))
         self.greeting_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.greeting_label.setStyleSheet(f"color: {self.COLORS['light']};")
+        self.greeting_label.setStyleSheet(f"color: {self.COLORS['light']}; margin: 5px;")
 
         staff_code_layout.addWidget(staff_code_label)
         staff_code_layout.addWidget(self.staff_code_entry)
         staff_code_layout.addWidget(self.greeting_label)
         main_layout.addLayout(staff_code_layout)
 
-        # Visitor Button with modern styling
+        # Add stretch to push buttons to bottom
+        main_layout.addStretch()
+
+        # Buttons layout - at the bottom
+        button_layout = QVBoxLayout()
+        button_layout.setSpacing(8)
+        button_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Visitor Button - bigger
         visitor_button = QPushButton("Visitor")
-        visitor_button.setFont(QFont("Arial", 18))
-        visitor_button.setMinimumSize(300, 60)
+        visitor_button.setFont(QFont("Arial", 24))
+        visitor_button.setMinimumSize(400, 80)
         visitor_button.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.COLORS['purple']};
                 color: {self.COLORS['light']};
-                border-radius: 10px;
+                border-radius: 12px;
                 border: none;
+                margin: 5px;
             }}
             QPushButton:hover {{
                 background-color: {self.COLORS['purple']}dd;
             }}
         """)
         visitor_button.clicked.connect(self.open_visitor_form)
-        main_layout.addWidget(visitor_button, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # Buttons Layout
-        button_layout = QVBoxLayout()
-        button_layout.setSpacing(20)
+        button_layout.addWidget(visitor_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Clock In and Out Buttons Layout
         clock_buttons_layout = QHBoxLayout()
-        clock_buttons_layout.setSpacing(20)
+        clock_buttons_layout.setSpacing(15)
 
         # Fingerprint Scan Button
         if self.fingerprint_device_available:
             self.fingerprint_scan_button = QPushButton("🔍 Scan Fingerprint")
-            self.fingerprint_scan_button.setFont(QFont("Inter", 16, QFont.Weight.Medium))
-            self.fingerprint_scan_button.setMinimumSize(300, 55)
+            self.fingerprint_scan_button.setFont(QFont("Inter", 22, QFont.Weight.Medium))
+            self.fingerprint_scan_button.setMinimumSize(400, 80)
             self.fingerprint_scan_button.setStyleSheet(f"""
                 QPushButton {{
                     background: qlineargradient(
@@ -1542,34 +1314,32 @@ class StaffClockInOutSystem(QMainWindow):
             self.fingerprint_scan_button.clicked.connect(self.start_fingerprint_scan)
             button_layout.addWidget(self.fingerprint_scan_button)
             
-            # Status label for feedback during scanning
+            # Status label for feedback during scanning - no background box
             self.fingerprint_status_label = QLabel("Ready to scan")
             self.fingerprint_status_label.setFont(QFont("Inter", 11))
             self.fingerprint_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.fingerprint_status_label.setStyleSheet(f"""
                 QLabel {{
                     color: {self.COLORS['text']};
-                    background-color: {self.COLORS['light']};
-                    border: 1px solid {self.COLORS['border']};
-                    border-radius: 8px;
-                    padding: 8px;
-                    margin: 5px 10px;
+                    background: transparent;
+                    border: none;
+                    padding: 5px;
+                    margin: 5px;
                 }}
             """)
             button_layout.addWidget(self.fingerprint_status_label)
         else:
-            # Show unavailable status if no fingerprint device
+            # Show unavailable status if no fingerprint device - no background box
             fingerprint_unavailable_label = QLabel("❌ Fingerprint Scanner: Unavailable")
             fingerprint_unavailable_label.setFont(QFont("Inter", 12))
             fingerprint_unavailable_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             fingerprint_unavailable_label.setStyleSheet(f"""
                 QLabel {{
                     color: {self.COLORS['gray']};
-                    background-color: {self.COLORS['light']};
-                    border: 2px solid {self.COLORS['gray']};
-                    border-radius: 10px;
-                    padding: 15px;
-                    margin: 10px;
+                    background: transparent;
+                    border: none;
+                    padding: 5px;
+                    margin: 5px;
                 }}
             """)
             button_layout.addWidget(fingerprint_unavailable_label)
@@ -1612,22 +1382,6 @@ class StaffClockInOutSystem(QMainWindow):
 
         self.central_widget.installEventFilter(self)
 
-        # Clock display
-        self.clock_label = QLabel()
-        self.clock_label.setFont(QFont("Arial", 28, QFont.Weight.Bold))
-        self.clock_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.clock_label.setStyleSheet(f"""
-            QLabel {{
-                color: {self.COLORS['light']};
-                background-color: {self.COLORS['lighter_dark']};
-                border: 2px solid {self.COLORS['border']};
-                border-radius: 15px;
-                padding: 20px;
-                margin: 15px;
-            }}
-        """)
-        main_layout.addWidget(self.clock_label)
-
         # Modern footer
         footer = self.create_footer()
         main_layout.addWidget(footer)
@@ -1646,14 +1400,15 @@ class StaffClockInOutSystem(QMainWindow):
     def create_styled_button(self, text, color, callback):
         """Create a consistently styled button."""
         button = QPushButton(text)
-        button.setFont(QFont("Inter", 18))
-        button.setMinimumSize(300, 60)
+        button.setFont(QFont("Inter", 24))
+        button.setMinimumSize(400, 80)
         button.setStyleSheet(f"""
             QPushButton {{
                 background-color: {color};
                 color: {self.COLORS['light']};
-                border-radius: 10px;
+                border-radius: 12px;
                 border: none;
+                margin: 5px;
             }}
             QPushButton:hover {{
                 background-color: {color}dd;
@@ -1692,11 +1447,10 @@ class StaffClockInOutSystem(QMainWindow):
         self.fingerprint_status_label.setStyleSheet(f"""
             QLabel {{
                 color: {self.COLORS['warning']};
-                background-color: {self.COLORS['light']};
-                border: 1px solid {self.COLORS['warning']};
-                border-radius: 8px;
-                padding: 8px;
-                margin: 5px 10px;
+                background: transparent;
+                border: none;
+                padding: 5px;
+                margin: 5px;
             }}
         """)
         
@@ -1716,11 +1470,10 @@ class StaffClockInOutSystem(QMainWindow):
             self.fingerprint_status_label.setStyleSheet(f"""
                 QLabel {{
                     color: {self.COLORS['text']};
-                    background-color: {self.COLORS['light']};
-                    border: 1px solid {self.COLORS['border']};
-                    border-radius: 8px;
-                    padding: 8px;
-                    margin: 5px 10px;
+                    background: transparent;
+                    border: none;
+                    padding: 5px;
+                    margin: 5px;
                 }}
             """)
     

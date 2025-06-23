@@ -8,13 +8,12 @@ import zipfile
 class DailyBackUp(QThread):
     daily_back_up = pyqtSignal(str)  # Signal to notify backup completion
 
-    def __init__(self, backup_folder, database_path, log_file_path, settings_path, logo_path, parent=None):
+    def __init__(self, backup_folder, database_path, log_file_path, settings_path, parent=None):
         super().__init__(parent)
         self.backup_folder = backup_folder
         self.database_path = database_path
         self.log_file_path = log_file_path
         self.settings_path = settings_path
-        self.logo_path = logo_path  # Add logo_path here
         self.running = True
 
         # Ensure the backup directory exists or create it
@@ -54,8 +53,7 @@ class DailyBackUp(QThread):
                 # Add settings file
                 self.add_file_to_zip(backup_zip, self.settings_path)
 
-                # Add logo file
-                self.add_file_to_zip(backup_zip, self.logo_path)
+                
 
                 # Add ProgramData folder
                 self.add_folder_to_zip(backup_zip, "ProgramData")
