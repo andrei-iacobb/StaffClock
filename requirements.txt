@@ -36,4 +36,13 @@ black>=23.0.0
 
 # Windows-specific dependencies
 pywin32>=305; sys_platform == "win32"
-wmi>=1.5.0; sys_platform == "win32" 
+wmi>=1.5.0; sys_platform == "win32"
+
+# Report Generation
+reportlab>=4.0.0
+
+# Additional USB support for Windows
+libusb>=1.0.0; sys_platform == "win32"
+
+# Data handling
+pandas>=2.0.0 
