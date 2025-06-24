@@ -65,19 +65,31 @@ tempPath = permanentPath = databasePath = settingsFilePath = log_file = ""
 # Initialize logging manager
 logger = None
 
+def get_app_directory():
+    """
+    Get the application directory dynamically.
+    Works for scripts, executables, and frozen apps on any device.
+    """
+    if getattr(sys, 'frozen', False):
+        # Running as a frozen executable (PyInstaller, cx_Freeze, etc.)
+        app_dir = os.path.dirname(sys.executable)
+    else:
+        # Running as a script
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    return app_dir
+
 def get_os_specific_path():
     global tempPath, permanentPath, databasePath, settingsFilePath, log_file, logger
 
-    # Use the user's home directory to store application data
-    # This is more robust and avoids permissions issues in Program Files
-    home_dir = os.path.expanduser("~")
-    base_path = os.path.join(home_dir, "StaffClock_Data")
-
-    # The original "ProgramData" is now the base path
-    program_data_path = base_path 
-    tempPath = os.path.join(base_path, "TempData")
-    permanentPath = os.path.join(base_path, "Timesheets")
-    backup_folder = os.path.join(base_path, "Backups")
+    # Get the application directory dynamically
+    app_dir = get_app_directory()
+    
+    # Create all paths relative to the app directory
+    program_data_path = os.path.join(app_dir, "ProgramData")
+    tempPath = os.path.join(app_dir, "TempData")
+    permanentPath = os.path.join(app_dir, "Timesheets")
+    backup_folder = os.path.join(app_dir, "Backups")
 
     for folder in [program_data_path, tempPath, permanentPath, backup_folder]:
         os.makedirs(folder, exist_ok=True)
@@ -91,6 +103,12 @@ def get_os_specific_path():
     logger.log_startup(APP_VERSION)
 
     configure_logging()
+    
+    # Log the application directory and paths for debugging
+    logging.info(f"Application running from: {app_dir}")
+    logging.info(f"Database path: {databasePath}")
+    logging.info(f"Settings path: {settingsFilePath}")
+    logging.info(f"Backup folder: {backup_folder}")
 
     # Get screen dimensions before checking files
     app = QApplication.instance() or QApplication(sys.argv)
@@ -744,18 +762,21 @@ class StaffClockInOutSystem(QMainWindow):
         }
 
         self.isWindowed = False
-        # Paths
-        self.backup_folder = os.path.join(os.path.dirname(__file__), "Backups")
+        # Get application directory dynamically for all paths
+        app_dir = get_app_directory()
+        
+        # Paths - all relative to app directory
+        self.backup_folder = os.path.join(app_dir, "Backups")
         self.database_path = databasePath
         self.log_file_path = log_file
         self.settings_path = settingsFilePath
         
         # Initialize archive database folder
-        self.archive_folder = os.path.join(os.path.dirname(__file__), "Archive_Databases")
+        self.archive_folder = os.path.join(app_dir, "Archive_Databases")
         os.makedirs(self.archive_folder, exist_ok=True)
         
         # Initialize real-time backup database
-        self.realtime_backup_path = os.path.join(os.path.dirname(__file__), "Backups", "realtime_backup.db")
+        self.realtime_backup_path = os.path.join(app_dir, "Backups", "realtime_backup.db")
         self.initialize_realtime_backup()
         
         # Initialize optimized fingerprint system
@@ -772,7 +793,7 @@ class StaffClockInOutSystem(QMainWindow):
             logging.warning(f"Fingerprint device not available: {fingerprint_init_msg}")
 
         self.daily_backup_thread = DailyBackUp(
-            backup_folder=os.path.join(os.path.dirname(__file__), "Backups"),
+            backup_folder=self.backup_folder,
             database_path=databasePath,
             log_file_path=log_file,
             settings_path=settingsFilePath,
@@ -890,9 +911,18 @@ class StaffClockInOutSystem(QMainWindow):
         except Exception as e:
             logging.error(f"Failed to create real-time backup for staff record: {e}")
 
-    def archive_current_database(self):
-        """Archive the current database and reset it for a fresh start."""
+    def archive_current_database(self, force_archive=False):
+        """
+        Archive the current database and reset it for a fresh start.
+        
+        Args:
+            force_archive (bool): If True, archive even if users are clocked in (with warning)
+        """
         try:
+            # Check for users who are currently clocked in
+            if not force_archive and not self.check_safe_to_archive():
+                return  # Archive was cancelled due to active users
+            
             # Create archive filename with current date
             archive_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             archive_filename = f"database_archive_{archive_date}.db"
@@ -914,6 +944,95 @@ class StaffClockInOutSystem(QMainWindow):
         except Exception as e:
             logging.error(f"Failed to archive database: {e}")
             self.msg(f"Error archiving database: {str(e)}", "warning", "Archive Error")
+
+    def check_safe_to_archive(self):
+        """
+        Check if it's safe to archive the database (no users are currently clocked in).
+        Shows confirmation dialog if active users are found.
+        
+        Returns:
+            bool: True if safe to archive or user confirms force archive, False otherwise
+        """
+        try:
+            conn = sqlite3.connect(self.database_path)
+            c = conn.cursor()
+            
+            # Find users who are currently clocked in (clock_out_time IS NULL)
+            c.execute("""
+                SELECT DISTINCT cr.staff_code, s.name, s.role, cr.clock_in_time
+                FROM clock_records cr
+                JOIN staff s ON cr.staff_code = s.code
+                WHERE cr.clock_out_time IS NULL
+                ORDER BY s.name
+            """)
+            active_users = c.fetchall()
+            conn.close()
+            
+            if not active_users:
+                # Safe to archive - no active users
+                logging.info("✅ Database archive check: No active users found - safe to archive")
+                return True
+            
+            # Active users found - show warning dialog
+            active_count = len(active_users)
+            user_list = []
+            
+            for staff_code, name, role, clock_in_time in active_users:
+                clock_in_dt = datetime.fromisoformat(clock_in_time)
+                hours_worked = (datetime.now() - clock_in_dt).total_seconds() / 3600
+                user_list.append(f"• {name} ({staff_code}) - {role} - {hours_worked:.1f}h active")
+            
+            warning_message = f"""⚠️ DATABASE ARCHIVE WARNING ⚠️
+
+{active_count} user(s) are currently clocked in:
+
+{chr(10).join(user_list)}
+
+🚨 ARCHIVING NOW WILL CAUSE PROBLEMS:
+• These users won't be able to clock out properly
+• Their active shifts will be lost in the archive
+• Data integrity will be compromised
+
+💡 RECOMMENDED ACTIONS:
+1. Wait for all users to clock out naturally
+2. Use Progressive Generation to handle active users
+3. Manually clock out users if necessary
+
+Do you want to proceed anyway? 
+(This is NOT recommended unless you understand the consequences)"""
+
+            reply = QMessageBox.question(
+                self,
+                "⚠️ Active Users Found - Archive Warning",
+                warning_message,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No  # Default to No for safety
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                # User chose to force archive despite warning
+                logging.warning(f"⚠️ FORCED ARCHIVE: User chose to archive with {active_count} active users")
+                
+                # Log each active user for audit trail
+                for staff_code, name, role, clock_in_time in active_users:
+                    logging.warning(f"   ACTIVE USER ARCHIVED: {name} ({staff_code}) - {role} - clocked in at {clock_in_time}")
+                
+                return True
+            else:
+                # User cancelled archive
+                logging.info(f"📛 Archive cancelled by user due to {active_count} active users")
+                self.msg(
+                    f"Archive cancelled.\n\n"
+                    f"{active_count} user(s) are still clocked in.\n"
+                    f"Please wait for them to clock out or use Progressive Generation.",
+                    "info", "Archive Cancelled"
+                )
+                return False
+                
+        except Exception as e:
+            logging.error(f"Error checking archive safety: {e}")
+            self.msg(f"Error checking active users: {str(e)}", "warning", "Error")
+            return False
 
     def reset_current_database(self):
         """Reset the current database by clearing all records but keeping structure and staff."""
@@ -4589,6 +4708,65 @@ class StaffClockInOutSystem(QMainWindow):
         # Control buttons
         button_layout = QHBoxLayout()
         
+        # Archive status display
+        archive_status_label = QLabel()
+        archive_status_label.setFont(QFont("Inter", 11))
+        archive_status_label.setWordWrap(True)
+        archive_status_label.setStyleSheet(f"""
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+        """)
+        
+        # Check current archive safety status
+        try:
+            conn = sqlite3.connect(self.database_path)
+            c = conn.cursor()
+            c.execute("""
+                SELECT COUNT(DISTINCT cr.staff_code), 
+                       GROUP_CONCAT(s.name) as names
+                FROM clock_records cr
+                JOIN staff s ON cr.staff_code = s.code
+                WHERE cr.clock_out_time IS NULL
+            """)
+            result = c.fetchone()
+            active_count = result[0] if result[0] else 0
+            active_names = result[1] if result[1] else ""
+            conn.close()
+            
+            if active_count == 0:
+                archive_status_label.setText("✅ SAFE TO ARCHIVE: No users currently clocked in")
+                archive_status_label.setStyleSheet(f"""
+                    background-color: {self.COLORS['success']}33;
+                    color: {self.COLORS['success']};
+                    border: 1px solid {self.COLORS['success']};
+                    padding: 10px;
+                    border-radius: 5px;
+                    margin: 5px 0;
+                """)
+            else:
+                archive_status_label.setText(f"⚠️ ARCHIVE WARNING: {active_count} user(s) still clocked in: {active_names[:50]}{'...' if len(active_names) > 50 else ''}")
+                archive_status_label.setStyleSheet(f"""
+                    background-color: {self.COLORS['warning']}33;
+                    color: {self.COLORS['warning']};
+                    border: 1px solid {self.COLORS['warning']};
+                    padding: 10px;
+                    border-radius: 5px;
+                    margin: 5px 0;
+                """)
+        except:
+            archive_status_label.setText("❓ Cannot determine archive safety status")
+            archive_status_label.setStyleSheet(f"""
+                background-color: {self.COLORS['gray']}33;
+                color: {self.COLORS['gray']};
+                border: 1px solid {self.COLORS['gray']};
+                padding: 10px;
+                border-radius: 5px;
+                margin: 5px 0;
+            """)
+        
+        layout.addWidget(archive_status_label)
+
         # Manual archive button
         manual_archive_button = QPushButton("Create Manual Archive")
         manual_archive_button.setFont(QFont("Inter", 12))
@@ -4597,6 +4775,15 @@ class StaffClockInOutSystem(QMainWindow):
             min-width: 150px;
         """)
         manual_archive_button.clicked.connect(lambda: self.create_manual_archive(archive_dialog))
+        
+        # Force archive button (with protection)
+        force_archive_button = QPushButton("Archive & Reset Database")
+        force_archive_button.setFont(QFont("Inter", 12))
+        force_archive_button.setStyleSheet(f"""
+            background-color: {self.COLORS['danger']};
+            min-width: 150px;
+        """)
+        force_archive_button.clicked.connect(lambda: self.archive_with_confirmation(archive_dialog))
         
         # Refresh button
         refresh_button = QPushButton("Refresh")
@@ -4609,6 +4796,7 @@ class StaffClockInOutSystem(QMainWindow):
         close_button.clicked.connect(archive_dialog.close)
         
         button_layout.addWidget(manual_archive_button)
+        button_layout.addWidget(force_archive_button)
         button_layout.addWidget(refresh_button)
         button_layout.addWidget(close_button)
         layout.addLayout(button_layout)
@@ -4887,6 +5075,107 @@ class StaffClockInOutSystem(QMainWindow):
         except Exception as e:
             self.msg(f"Error creating manual archive: {str(e)}", "warning", "Error")
             logging.error(f"Error creating manual archive: {e}")
+
+    def archive_with_confirmation(self, parent_dialog):
+        """Archive database with user confirmation and protection."""
+        try:
+            reply = QMessageBox.question(
+                parent_dialog,
+                "Archive & Reset Database",
+                "This will archive the current database and reset it for a fresh start.\n\n"
+                "⚠️ This action will:\n"
+                "• Create a complete backup of all current data\n"
+                "• Clear all clock records and visitor records\n"
+                "• Keep staff information intact\n\n"
+                "The system will check for active users and warn you if any are found.\n\n"
+                "Do you want to proceed?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                # Close the dialog first, then archive
+                parent_dialog.close()
+                self.archive_current_database()  # This will now check for active users
+                
+        except Exception as e:
+            self.msg(f"Error during archive confirmation: {str(e)}", "warning", "Error")
+            logging.error(f"Error during archive confirmation: {e}")
+
+    def get_active_users_info(self):
+        """
+        Get detailed information about currently active users.
+        
+        Returns:
+            list: List of dictionaries containing active user information
+        """
+        try:
+            conn = sqlite3.connect(self.database_path)
+            c = conn.cursor()
+            
+            c.execute("""
+                SELECT cr.staff_code, s.name, s.role, cr.clock_in_time, cr.id
+                FROM clock_records cr
+                JOIN staff s ON cr.staff_code = s.code
+                WHERE cr.clock_out_time IS NULL
+                ORDER BY cr.clock_in_time
+            """)
+            
+            active_users = []
+            for staff_code, name, role, clock_in_time, record_id in c.fetchall():
+                clock_in_dt = datetime.fromisoformat(clock_in_time)
+                hours_worked = (datetime.now() - clock_in_dt).total_seconds() / 3600
+                
+                active_users.append({
+                    'staff_code': staff_code,
+                    'name': name,
+                    'role': role,
+                    'clock_in_time': clock_in_time,
+                    'clock_in_formatted': clock_in_dt.strftime('%H:%M on %d/%m/%Y'),
+                    'hours_worked': hours_worked,
+                    'record_id': record_id
+                })
+            
+            conn.close()
+            return active_users
+            
+        except Exception as e:
+            logging.error(f"Error getting active users info: {e}")
+            return []
+
+    def force_clock_out_user(self, staff_code, record_id):
+        """
+        Force clock out a user (emergency use only).
+        
+        Args:
+            staff_code (str): The staff code to clock out
+            record_id (int): The specific record ID to close
+        """
+        try:
+            conn = sqlite3.connect(self.database_path)
+            c = conn.cursor()
+            
+            # Force clock out with current time
+            clock_out_time = datetime.now().isoformat()
+            c.execute('UPDATE clock_records SET clock_out_time = ? WHERE id = ?', 
+                     (clock_out_time, record_id))
+            conn.commit()
+            
+            # Get staff name for logging
+            c.execute('SELECT name FROM staff WHERE code = ?', (staff_code,))
+            result = c.fetchone()
+            staff_name = result[0] if result else 'Unknown'
+            conn.close()
+            
+            # Create backup of the forced clock-out
+            self.backup_clock_record(record_id, staff_code, None, clock_out_time, f"FORCE CLOCK-OUT: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            logging.warning(f"⚠️ FORCE CLOCK-OUT: {staff_name} ({staff_code}) - Record ID {record_id}")
+            return True
+            
+        except Exception as e:
+            logging.error(f"Error force clocking out user {staff_code}: {e}")
+            return False
 
     def refresh_archive_management(self, dialog):
         """Refresh the archive management dialog."""
