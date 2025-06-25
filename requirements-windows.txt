@@ -1,7 +1,13 @@
-# GUI Framework - Windows compatible versions
-PyQt6>=6.4.0,<6.7.0
-PyQt6-Qt6>=6.4.0,<6.7.0
-PyQt6-sip>=13.4.0,<13.6.0
+# Windows-specific requirements file for StaffClock
+# Use this file if the main requirements.txt fails on Windows
+
+# GUI Framework - Conservative versions for Windows compatibility
+PyQt6==6.5.3
+PyQt6-Qt6==6.5.3
+PyQt6-sip==13.6.0
+
+# Alternative: If PyQt6 still fails, uncomment the line below instead
+# PySide6>=6.4.0
 
 # Computer Vision and Image Processing
 opencv-python>=4.8.0
