@@ -1,0 +1,51 @@
+# Python 3.9 Optimized Requirements for StaffClock
+# These versions are specifically tested and optimized for Python 3.9
+
+# GUI Framework - Python 3.9 optimized versions
+PyQt6==6.6.0
+PyQt6-Qt6==6.6.0
+PyQt6-sip==13.6.0
+
+# Computer Vision and Image Processing
+opencv-python==4.8.1.78
+pillow==10.1.0
+numpy==1.24.4
+
+# Scientific Computing and Machine Learning
+scikit-learn==1.3.2
+scipy==1.11.4
+
+# Data Visualization
+matplotlib==3.8.2
+seaborn==0.13.0
+
+# USB Device Communication
+pyusb==1.2.1
+
+# System Integration
+keyboard==0.13.5
+pyglet==2.0.10
+
+# Date and Time
+python-dateutil==2.8.2
+
+# Additional utilities
+psutil==5.9.6
+requests==2.31.0
+
+# Development and Testing
+pytest==7.4.3
+black==23.11.0
+
+# Windows-specific dependencies
+pywin32==306; sys_platform == "win32"
+wmi==1.5.1; sys_platform == "win32"
+
+# Report Generation
+reportlab==4.0.7
+
+# Additional USB support for Windows
+libusb==1.0.26; sys_platform == "win32"
+
+# Data handling
+pandas==2.1.4 
