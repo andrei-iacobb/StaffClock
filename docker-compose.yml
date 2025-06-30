@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # Production StaffClock service
+  staffclock:
+    build:
+      context: .
+      target: production
+    container_name: staffclock-app
+    environment:
+      - VNC_PASSWORD=staffclock123
+      - TZ=UTC
+    ports:
+      - "5900:5900"  # VNC port
+    volumes:
+      - staffclock_data:/app/ProgramData
+      - staffclock_timesheets:/app/Timesheets
+      - staffclock_backups:/app/Backups
+      - staffclock_temp:/app/TempData
+    devices:
+      # USB device access for fingerprint reader (if available)
+      - /dev/bus/usb:/dev/bus/usb:rwm
+    privileged: false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "python.*main.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - staffclock-network
+
+  # Development StaffClock service with noVNC
+  staffclock-dev:
+    build:
+      context: .
+      target: development
+    container_name: staffclock-dev
+    environment:
+      - VNC_PASSWORD=staffclock123
+      - TZ=UTC
+    ports:
+      - "5901:5900"  # VNC port
+      - "6080:6080"  # noVNC web interface
+    volumes:
+      - staffclock_dev_data:/app/ProgramData
+      - staffclock_dev_timesheets:/app/Timesheets
+      - staffclock_dev_backups:/app/Backups
+      - staffclock_dev_temp:/app/TempData
+      # Mount source code for development
+      - ./staffclock:/app/staffclock
+      - ./requirements-py39.txt:/app/requirements-py39.txt
+    devices:
+      - /dev/bus/usb:/dev/bus/usb:rwm
+    privileged: false
+    restart: unless-stopped
+    networks:
+      - staffclock-network
+    profiles:
+      - dev
+
+  # Database backup service
+  staffclock-backup:
+    image: alpine:latest
+    container_name: staffclock-backup
+    environment:
+      - TZ=UTC
+    volumes:
+      - staffclock_data:/data/ProgramData:ro
+      - staffclock_backups:/data/Backups:ro
+      - staffclock_backup_external:/backup
+    command: >
+      sh -c "
+      echo 'Setting up backup cron job...'
+      apk add --no-cache dcron
+      echo '0 2 * * * cp -r /data/* /backup/' | crontab -
+      echo 'Backup service started'
+      crond -f
+      "
+    restart: unless-stopped
+    networks:
+      - staffclock-network
+    profiles:
+      - backup
+
+  # X11 forwarding service (alternative to VNC)
+  staffclock-x11:
+    build:
+      context: .
+      target: production
+    container_name: staffclock-x11
+    environment:
+      - DISPLAY=${DISPLAY}
+      - TZ=UTC
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - staffclock_data:/app/ProgramData
+      - staffclock_timesheets:/app/Timesheets
+      - staffclock_backups:/app/Backups
+    devices:
+      - /dev/bus/usb:/dev/bus/usb:rwm
+    network_mode: host
+    restart: unless-stopped
+    profiles:
+      - x11
+
+networks:
+  staffclock-network:
+    driver: bridge
+
+volumes:
+  # Production volumes
+  staffclock_data:
+    driver: local
+  staffclock_timesheets:
+    driver: local
+  staffclock_backups:
+    driver: local
+  staffclock_temp:
+    driver: local
+  
+  # Development volumes
+  staffclock_dev_data:
+    driver: local
+  staffclock_dev_timesheets:
+    driver: local
+  staffclock_dev_backups:
+    driver: local
+  staffclock_dev_temp:
+    driver: local
+  
+  # Backup volume
+  staffclock_backup_external:
+    driver: local 

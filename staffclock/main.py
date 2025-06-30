@@ -815,6 +815,11 @@ class StaffClockInOutSystem(QMainWindow):
         self.clock_timer.timeout.connect(self.update_time)
         self.clock_timer.start(1000)
         
+        # Auto-clear timer for security (15 seconds of inactivity)
+        self.auto_clear_timer = QTimer(self)
+        self.auto_clear_timer.setSingleShot(True)  # Only fire once
+        self.auto_clear_timer.timeout.connect(self.clear_input_fields)
+        
 
         # Load settings
         self.settings = self.load_settings()
@@ -886,10 +891,31 @@ class StaffClockInOutSystem(QMainWindow):
             
             conn.commit()
             conn.close()
-            logging.info(f"Real-time backup created for clock record ID: {record_id}")
+            
+            # Enhanced backup logging
+            logger.log_database_backup(
+                backup_type="Real-time Clock Record",
+                success=True,
+                file_path=self.realtime_backup_path,
+                records_count=1
+            )
             
         except Exception as e:
-            logging.error(f"Failed to create real-time backup for clock record: {e}")
+            logger.log_database_backup(
+                backup_type="Real-time Clock Record",
+                success=False,
+                error_msg=str(e)
+            )
+            logger.log_error(
+                e,
+                context=f"backup_clock_record - Record ID: {record_id}",
+                user=staff_code,
+                additional_data={
+                    "record_id": record_id,
+                    "staff_code": staff_code,
+                    "backup_path": self.realtime_backup_path
+                }
+            )
 
     def backup_staff_record(self, staff_code, name, role=None, notes=None):
         """Immediately backup a staff record after it's created/updated."""
@@ -906,10 +932,39 @@ class StaffClockInOutSystem(QMainWindow):
             
             conn.commit()
             conn.close()
-            logging.info(f"Real-time backup created for staff: {name}")
+            
+            # Enhanced backup logging
+            logger.log_database_backup(
+                backup_type="Real-time Staff Record",
+                success=True,
+                file_path=self.realtime_backup_path,
+                records_count=1
+            )
+            logger.log_admin_action(
+                admin_user="SYSTEM",
+                action="Staff Backup",
+                target=f"{name} ({staff_code})",
+                details=f"Staff record backed up - Role: {role or 'Unknown'}",
+                success=True
+            )
             
         except Exception as e:
-            logging.error(f"Failed to create real-time backup for staff record: {e}")
+            logger.log_database_backup(
+                backup_type="Real-time Staff Record", 
+                success=False,
+                error_msg=str(e)
+            )
+            logger.log_error(
+                e,
+                context=f"backup_staff_record - Staff: {name}",
+                user=staff_code,
+                additional_data={
+                    "staff_code": staff_code,
+                    "staff_name": name,
+                    "staff_role": role,
+                    "backup_path": self.realtime_backup_path
+                }
+            )
 
     def archive_current_database(self, force_archive=False):
         """
@@ -1169,6 +1224,363 @@ Do you want to proceed anyway?
         """Update the clock label with the current time."""
         current_time = QTime.currentTime().toString("HH:mm:ss")
         self.clock_label.setText(current_time)
+    
+    def clear_input_fields(self):
+        """Clear staff code input and greeting for security purposes."""
+        if hasattr(self, 'staff_code_entry'):
+            self.staff_code_entry.clear()
+        if hasattr(self, 'greeting_label'):
+            self.greeting_label.setText("")
+        logging.info("Input fields cleared for security (inactivity timeout)")
+    
+    def restart_auto_clear_timer(self):
+        """Restart the auto-clear timer (15 seconds)."""
+        self.auto_clear_timer.stop()
+        self.auto_clear_timer.start(15000)  # 15 seconds
+    
+    def show_clockout_note_prompt(self, record_id, staff_code, time_out):
+        """Show combined clock-out success message with note prompt."""
+        note_prompt = QDialog(self)
+        note_prompt.setWindowTitle("Clock-Out Successful")
+        note_prompt.setFixedSize(450, 250)
+        
+        # Force window to stay on top and be modal
+        note_prompt.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.WindowSystemMenuHint)
+        note_prompt.setModal(True)
+        note_prompt.raise_()
+        note_prompt.activateWindow()
+        
+        # Style the dialog
+        note_prompt.setStyleSheet(f"""
+            QDialog {{
+                background: {self.COLORS['dark']};
+                color: {self.COLORS['light']};
+                border: 3px solid {self.COLORS['success']};
+                border-radius: 12px;
+            }}
+            QLabel {{
+                color: {self.COLORS['light']};
+                font-family: Arial, sans-serif;
+            }}
+            QLabel#success_label {{
+                color: {self.COLORS['success']};
+                font-size: 18px;
+                font-weight: bold;
+            }}
+            QLabel#question_label {{
+                color: {self.COLORS['light']};
+                font-size: 16px;
+            }}
+            QLabel#countdown_label {{
+                color: {self.COLORS['warning']};
+                font-size: 12px;
+            }}
+            QPushButton {{
+                background-color: {self.COLORS['primary']};
+                color: {self.COLORS['light']};
+                border: none;
+                border-radius: 8px;
+                padding: 12px 24px;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                font-weight: bold;
+                min-width: 80px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.COLORS['primary']}dd;
+            }}
+            QPushButton#yes_button {{
+                background-color: {self.COLORS['success']};
+            }}
+            QPushButton#yes_button:hover {{
+                background-color: {self.COLORS['success']}dd;
+            }}
+            QPushButton#no_button {{
+                background-color: {self.COLORS['gray']};
+            }}
+            QPushButton#no_button:hover {{
+                background-color: {self.COLORS['gray']}dd;
+            }}
+        """)
+        
+        layout = QVBoxLayout(note_prompt)
+        layout.setSpacing(15)
+        layout.setContentsMargins(30, 30, 30, 30)
+        
+        # Success message
+        success_label = QLabel(f"✅ Clock-out recorded successfully at {time_out}")
+        success_label.setObjectName("success_label")
+        success_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(success_label)
+        
+        # Spacer
+        layout.addSpacing(10)
+        
+        # Question label
+        question_label = QLabel("Would you like to add a note to your record?")
+        question_label.setObjectName("question_label")
+        question_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        question_label.setWordWrap(True)
+        layout.addWidget(question_label)
+        
+        # Countdown label
+        countdown_label = QLabel("Auto-close in 10 seconds...")
+        countdown_label.setObjectName("countdown_label")
+        countdown_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(countdown_label)
+        
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(15)
+        
+        yes_button = QPushButton("Yes, Add Note")
+        yes_button.setObjectName("yes_button")
+        no_button = QPushButton("No, Thanks")
+        no_button.setObjectName("no_button")
+        
+        button_layout.addWidget(yes_button)
+        button_layout.addWidget(no_button)
+        layout.addLayout(button_layout)
+        
+        # Set up timer for auto-close (10 seconds)
+        auto_close_timer = QTimer(note_prompt)
+        auto_close_timer.setSingleShot(True)
+        auto_close_timer.timeout.connect(note_prompt.reject)
+        
+        # Countdown timer to update the label
+        countdown_timer = QTimer(note_prompt)
+        countdown_seconds = [10]  # Use list to make it mutable in nested function
+        
+        def update_countdown():
+            countdown_seconds[0] -= 1
+            if countdown_seconds[0] > 0:
+                countdown_label.setText(f"Auto-close in {countdown_seconds[0]} seconds...")
+            else:
+                countdown_label.setText("Closing...")
+                countdown_timer.stop()
+        
+        countdown_timer.timeout.connect(update_countdown)
+        countdown_timer.start(1000)  # Update every second
+        auto_close_timer.start(10000)  # Close after 10 seconds
+        
+        # Connect buttons
+        yes_button.clicked.connect(note_prompt.accept)
+        no_button.clicked.connect(note_prompt.reject)
+        
+        # Show dialog and handle result
+        result = note_prompt.exec()
+        auto_close_timer.stop()
+        countdown_timer.stop()
+        
+        if result == QDialog.DialogCode.Accepted:
+            # User clicked "Yes", show text input dialog
+            self.show_note_input_dialog(record_id, staff_code)
+        # If rejected or timed out, do nothing
+        
+        logging.info(f"Note prompt result for staff {staff_code}: {'Yes' if result == QDialog.DialogCode.Accepted else 'No/Timeout'}")
+    
+    def show_note_input_dialog(self, record_id, staff_code):
+        """Show a text input dialog for adding a note to the clock record."""
+        note_dialog = QDialog(self)
+        note_dialog.setWindowTitle("Add Note")
+        note_dialog.setFixedSize(500, 300)
+        
+        # Force window to stay on top and be modal
+        note_dialog.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.WindowSystemMenuHint)
+        note_dialog.setModal(True)
+        note_dialog.raise_()
+        note_dialog.activateWindow()
+        
+        # Style the dialog
+        note_dialog.setStyleSheet(f"""
+            QDialog {{
+                background: {self.COLORS['dark']};
+                color: {self.COLORS['light']};
+                border: 2px solid {self.COLORS['primary']};
+                border-radius: 10px;
+            }}
+            QLabel {{
+                color: {self.COLORS['light']};
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+            }}
+            QTextEdit {{
+                background-color: {self.COLORS['lighter_dark']};
+                color: {self.COLORS['light']};
+                border: 2px solid {self.COLORS['gray']};
+                border-radius: 8px;
+                padding: 10px;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+            }}
+            QTextEdit:focus {{
+                border: 2px solid {self.COLORS['primary']};
+            }}
+            QPushButton {{
+                background-color: {self.COLORS['primary']};
+                color: {self.COLORS['light']};
+                border: none;
+                border-radius: 8px;
+                padding: 12px 24px;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                font-weight: bold;
+                min-width: 80px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.COLORS['primary']}dd;
+            }}
+            QPushButton#save_button {{
+                background-color: {self.COLORS['success']};
+            }}
+            QPushButton#save_button:hover {{
+                background-color: {self.COLORS['success']}dd;
+            }}
+            QPushButton#cancel_button {{
+                background-color: {self.COLORS['gray']};
+            }}
+            QPushButton#cancel_button:hover {{
+                background-color: {self.COLORS['gray']}dd;
+            }}
+        """)
+        
+        layout = QVBoxLayout(note_dialog)
+        layout.setSpacing(15)
+        layout.setContentsMargins(30, 30, 30, 30)
+        
+        # Title label
+        title_label = QLabel("Add a note to your clock-out record:")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(title_label)
+        
+        # Text input
+        note_text = QTextEdit()
+        note_text.setPlaceholderText("Enter your note here...")
+        note_text.setMaximumHeight(120)
+        layout.addWidget(note_text)
+        
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(15)
+        
+        save_button = QPushButton("Save Note")
+        save_button.setObjectName("save_button")
+        cancel_button = QPushButton("Cancel")
+        cancel_button.setObjectName("cancel_button")
+        
+        button_layout.addWidget(save_button)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
+        
+        # Connect buttons
+        save_button.clicked.connect(note_dialog.accept)
+        cancel_button.clicked.connect(note_dialog.reject)
+        
+        # Focus on text input
+        note_text.setFocus()
+        
+        # Show dialog and handle result
+        result = note_dialog.exec()
+        
+        if result == QDialog.DialogCode.Accepted:
+            note_content = note_text.toPlainText().strip()
+            if note_content:
+                self.save_note_to_record(record_id, staff_code, note_content)
+            else:
+                logging.info(f"Empty note discarded for staff {staff_code}")
+        
+        logging.info(f"Note input dialog result for staff {staff_code}: {'Saved' if result == QDialog.DialogCode.Accepted else 'Cancelled'}")
+    
+    def save_note_to_record(self, record_id, staff_code, note):
+        """Save a note to the specified clock record."""
+        try:
+            conn = sqlite3.connect(databasePath)
+            c = conn.cursor()
+            
+            # First, verify the record exists
+            c.execute('SELECT id, clock_in_time, clock_out_time, break_time FROM clock_records WHERE id = ?', (record_id,))
+            record_data = c.fetchone()
+            
+            if not record_data:
+                conn.close()
+                self.msg("Error: Clock record not found.", "warning", "Error")
+                logging.error(f"Clock record {record_id} not found when trying to save note")
+                return
+            
+            # Update the record with the note
+            c.execute('UPDATE clock_records SET notes = ? WHERE id = ?', (note, record_id))
+            rows_affected = c.rowcount
+            conn.commit()
+            
+            logging.info(f"Database update: {rows_affected} rows affected for record {record_id}")
+            
+            if rows_affected == 0:
+                conn.close()
+                self.msg("Error: Failed to update record.", "warning", "Error")
+                logging.error(f"No rows updated when saving note to record {record_id}")
+                return
+            
+            # Create backup with the note
+            self.backup_clock_record(record_id, staff_code, record_data[1], record_data[2], note, record_data[3])
+            
+            conn.close()
+            
+            # Show confirmation with a more visible message
+            success_dialog = QDialog(self)
+            success_dialog.setWindowTitle("Note Saved")
+            success_dialog.setFixedSize(300, 150)
+            success_dialog.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowStaysOnTopHint)
+            success_dialog.setModal(True)
+            
+            success_dialog.setStyleSheet(f"""
+                QDialog {{
+                    background: {self.COLORS['dark']};
+                    color: {self.COLORS['light']};
+                    border: 2px solid {self.COLORS['success']};
+                    border-radius: 10px;
+                }}
+                QLabel {{
+                    color: {self.COLORS['success']};
+                    font-family: Arial, sans-serif;
+                    font-size: 16px;
+                    font-weight: bold;
+                }}
+                QPushButton {{
+                    background-color: {self.COLORS['success']};
+                    color: {self.COLORS['light']};
+                    border: none;
+                    border-radius: 8px;
+                    padding: 10px 20px;
+                    font-family: Arial, sans-serif;
+                    font-size: 14px;
+                }}
+            """)
+            
+            layout = QVBoxLayout(success_dialog)
+            layout.setSpacing(20)
+            layout.setContentsMargins(30, 30, 30, 30)
+            
+            success_label = QLabel("✅ Note saved successfully!")
+            success_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(success_label)
+            
+            ok_button = QPushButton("OK")
+            ok_button.clicked.connect(success_dialog.accept)
+            layout.addWidget(ok_button)
+            
+            # Auto-close after 3 seconds
+            QTimer.singleShot(3000, success_dialog.accept)
+            
+            success_dialog.exec()
+            
+            logging.info(f"Note successfully added to record {record_id} for staff {staff_code}: {note}")
+            
+        except sqlite3.Error as e:
+            self.msg(f"Database error saving note: {str(e)}", "warning", "Error")
+            logging.error(f"Database error saving note to record {record_id}: {e}")
+        except Exception as e:
+            self.msg(f"Unexpected error saving note: {str(e)}", "warning", "Error")
+            logging.error(f"Unexpected error saving note to record {record_id}: {e}")
 
     def load_settings(self):
         settings_file = settingsFilePath
@@ -1352,6 +1764,10 @@ Do you want to proceed anyway?
             }}
         """)
         self.staff_code_entry.textChanged.connect(self.on_staff_code_change)
+        self.staff_code_entry.textChanged.connect(self.restart_auto_clear_timer)
+        
+        # Start the auto-clear timer when UI is set up
+        self.restart_auto_clear_timer()
 
         self.greeting_label = QLabel("")
         self.greeting_label.setFont(QFont("Arial", 20, QFont.Weight.Medium))
@@ -1643,10 +2059,20 @@ Do you want to proceed anyway?
                 
                 # Show success message
                 self.msg(f"Fingerprint recognized: {staff_code}", "info", "Welcome")
-                logging.info(f"Fingerprint authentication successful: {staff_code}")
+                
+                # Enhanced logging for fingerprint authentication
+                logger.log_authentication_attempt(
+                    user=staff_code,
+                    auth_method="Fingerprint",
+                    success=True,
+                    user_name=data.get('employee_name', 'Unknown')
+                )
                 
                 # Reset UI after 3 seconds
                 QTimer.singleShot(3000, self.reset_fingerprint_ui)
+                
+                # Clear input fields after fingerprint authentication (longer delay for user to act)
+                QTimer.singleShot(10000, self.clear_input_fields)
                 
             elif "No fingerprint detected" in message:
                 # No finger was placed
@@ -1702,7 +2128,13 @@ Do you want to proceed anyway?
                     }}
                 """)
                 
-                logging.warning(f"Fingerprint authentication error: {message}")
+                # Enhanced logging for fingerprint errors
+                logger.log_authentication_attempt(
+                    user="Unknown",
+                    auth_method="Fingerprint",
+                    success=False,
+                    failure_reason=message
+                )
                 
                 # Reset UI after 2 seconds
                 QTimer.singleShot(2000, self.reset_fingerprint_ui)
@@ -1713,19 +2145,33 @@ Do you want to proceed anyway?
             QTimer.singleShot(1000, self.reset_fingerprint_ui)
 
     def clock_action(self, action, staff_code):
-        logger.log_system_event("Clock Action", f"Processing {action} for staff code {staff_code}")
+        # Get staff details for enhanced logging
         conn = sqlite3.connect(databasePath)
         c = conn.cursor()
 
         try:
             # Check if the staff exists
-            c.execute('SELECT * FROM staff WHERE code = ?', (staff_code,))
+            c.execute('SELECT name, role FROM staff WHERE code = ?', (staff_code,))
             staff = c.fetchone()
             if not staff:
-                logger.log_error(ValueError(f"Invalid staff code: {staff_code}"), "clock_action")
+                logger.log_authentication_attempt(
+                    user=staff_code, 
+                    auth_method="Staff Code", 
+                    success=False,
+                    failure_reason=f"Invalid staff code: {staff_code}"
+                )
+                logger.log_security_event(
+                    event_type="INVALID_ACCESS_ATTEMPT",
+                    user=staff_code,
+                    details=f"Attempted {action} with invalid staff code",
+                    severity="WARNING"
+                )
                 conn.close()
                 self.msg("Invalid user ID or staff code.", "warning", "Error")
                 return
+                
+            staff_name, staff_role = staff
+            logger.log_system_event("Clock Action Processing", f"Processing {action} for {staff_name} ({staff_code})")
 
             if action == 'in':
                 # Check if already clocked in but not on break
@@ -1737,10 +2183,34 @@ Do you want to proceed anyway?
                         # Start Break
                         self.break_start_time = datetime.now()
                         self.on_break = True
-                        logger.log_user_action(staff_code, "Break Start", f"Break started at {self.break_start_time}")
+                        
+                        # Enhanced logging for break start
+                        logger.log_clock_operation(
+                            user=staff_code,
+                            operation="Break Start",
+                            success=True,
+                            user_name=staff_name,
+                            user_role=staff_role,
+                            timestamp=self.break_start_time.strftime('%H:%M:%S'),
+                            additional_info={
+                                "previous_state": "clocked_in",
+                                "break_type": "manual"
+                            }
+                        )
+                        
+                        # Clear input fields immediately when showing confirmation
+                        self.clear_input_fields()
+                        
                         self.msg("Break started.", "info", "Success")
                     else:
-                        logger.log_user_action(staff_code, "Break Error", "Attempted to start break while already on break")
+                        # Enhanced logging for break error
+                        logger.log_security_event(
+                            event_type="INVALID_BREAK_ATTEMPT",
+                            user=staff_code,
+                            details="Attempted to start break while already on break",
+                            severity="WARNING",
+                            user_name=staff_name
+                        )
                         self.msg("You are already on break.", "warning", "Warning")
                 else:
                     # Regular Clock-In
@@ -1756,7 +2226,24 @@ Do you want to proceed anyway?
                     self.backup_clock_record(record_id, staff_code, clock_in_time, None)
                     
                     time_in = datetime.fromisoformat(clock_in_time).strftime('%H:%M')
-                    logger.log_user_action(staff_code, "Clock In", f"Clocked in at {time_in}")
+                    
+                    # Enhanced logging for clock-in
+                    logger.log_clock_operation(
+                        user=staff_code,
+                        operation="Clock In",
+                        success=True,
+                        user_name=staff_name,
+                        user_role=staff_role,
+                        timestamp=time_in,
+                        additional_info={
+                            "record_id": record_id,
+                            "shift_start": time_in
+                        }
+                    )
+                    
+                    # Clear input fields immediately when showing confirmation
+                    self.clear_input_fields()
+                    
                     self.msg(f'Clock-in recorded successfully at {time_in}', 'info', 'Success')
 
             elif action == 'out':
@@ -1777,7 +2264,24 @@ Do you want to proceed anyway?
                     
                     self.on_break = False
                     self.break_start_time = None
-                    logger.log_user_action(staff_code, "Break End", f"Break ended. Duration: {break_duration:.2f} minutes")
+                    
+                    # Enhanced logging for break end
+                    logger.log_clock_operation(
+                        user=staff_code,
+                        operation="Break End",
+                        success=True,
+                        user_name=staff_name,
+                        user_role=staff_role,
+                        timestamp=break_end_time.strftime('%H:%M:%S'),
+                        additional_info={
+                            "break_duration_minutes": f"{break_duration:.2f}",
+                            "new_state": "clocked_in"
+                        }
+                    )
+                    
+                    # Clear input fields immediately when showing confirmation
+                    self.clear_input_fields()
+                    
                     self.msg(f"Break ended. Duration: {break_duration:.2f} minutes.", "info", "Success")
                 else:
                     # Regular Clock-Out
@@ -1785,7 +2289,13 @@ Do you want to proceed anyway?
                     c.execute('SELECT id FROM clock_records WHERE staff_code = ? AND clock_out_time IS NULL', (staff_code,))
                     clock_record = c.fetchone()
                     if not clock_record:
-                        logger.log_error(ValueError(f"No active clock-in found for staff code: {staff_code}"), "clock_action")
+                        logger.log_security_event(
+                            event_type="INVALID_CLOCKOUT_ATTEMPT",
+                            user=staff_code,
+                            details="Attempted to clock out without active clock-in record",
+                            severity="WARNING",
+                            user_name=staff_name
+                        )
                         conn.close()
                         self.msg("You are not clocked in.", "warning", "Error")
                         return
@@ -1799,16 +2309,52 @@ Do you want to proceed anyway?
                         self.backup_clock_record(clock_record[0], staff_code, updated_record[0], clock_out_time, updated_record[1], updated_record[2])
                     
                     time_out = datetime.fromisoformat(clock_out_time).strftime('%H:%M')
-                    logger.log_user_action(staff_code, "Clock Out", f"Clocked out at {time_out}")
-                    self.msg(f'Clock-out recorded successfully at {time_out}', 'info', 'Success')
+                    
+                    # Enhanced logging for clock-out
+                    logger.log_clock_operation(
+                        user=staff_code,
+                        operation="Clock Out",
+                        success=True,
+                        user_name=staff_name,
+                        user_role=staff_role,
+                        timestamp=time_out,
+                        additional_info={
+                            "record_id": clock_record[0],
+                            "shift_end": time_out
+                        }
+                    )
+                    
+                    # Clear input fields immediately when showing confirmation
+                    self.clear_input_fields()
+                    
+                    # Show combined success message and note prompt
+                    self.show_clockout_note_prompt(clock_record[0], staff_code, time_out)
 
             else:
-                logger.log_error(ValueError(f"Unknown action: {action}"), "clock_action")
+                logger.log_error(
+                    ValueError(f"Unknown action: {action}"), 
+                    context="clock_action",
+                    user=staff_code,
+                    additional_data={
+                        "action": action,
+                        "staff_code": staff_code
+                    }
+                )
                 conn.close()
                 self.msg(f'Unknown action: {action}', 'warning', 'Error')
 
         except Exception as e:
-            logger.log_error(e, f"clock_action - Action: {action}, Staff Code: {staff_code}")
+            logger.log_error(
+                e, 
+                context=f"clock_action - Action: {action}",
+                user=staff_code,
+                additional_data={
+                    "action": action,
+                    "staff_code": staff_code,
+                    "user_name": staff_name if 'staff_name' in locals() else "Unknown",
+                    "user_role": staff_role if 'staff_role' in locals() else "Unknown"
+                }
+            )
             self.msg(f"An error occurred: {str(e)}", "warning", "Error")
         finally:
             conn.close()
@@ -1880,6 +2426,25 @@ Do you want to proceed anyway?
                 if hasattr(self, 'role_entry'):
                     self.role_entry.setText("")
         elif staff_code == self.settings.get("admin_pin", "123456"):  # Admin code
+            # Enhanced logging for admin access
+            logger.log_admin_action(
+                admin_user=staff_code,
+                action="Admin Access",
+                admin_name="System Administrator",
+                details="Admin mode activated via PIN",
+                success=True
+            )
+            logger.log_security_event(
+                event_type="ADMIN_ACCESS",
+                user=staff_code,
+                details="Admin mode activated",
+                severity="WARNING",
+                user_name="System Administrator"
+            )
+            
+            # Clear input fields immediately when activating admin mode
+            self.clear_input_fields()
+            
             self.greeting_label.setText("Admin Mode Activated")
             self.admin_button.show()
             self.admin_button.click()
@@ -1888,6 +2453,25 @@ Do you want to proceed anyway?
             self.greeting_label.setText("Exit Mode Activated")
             self.close()
         elif staff_code =='111111':  # Fire code (keep hardcoded for safety)
+            # Enhanced logging for fire emergency activation
+            logger.log_security_event(
+                event_type="FIRE_EMERGENCY",
+                user=staff_code,
+                details="Fire emergency protocol activated",
+                severity="CRITICAL",
+                user_name="Emergency System"
+            )
+            logger.log_admin_action(
+                admin_user=staff_code,
+                action="Fire Emergency",
+                admin_name="Emergency System",
+                details="Fire emergency protocol activated - all staff automatically clocked out",
+                success=True
+            )
+            
+            # Clear input fields immediately when activating fire mode
+            self.clear_input_fields()
+            
             self.greeting_label.setText("Fire!!!!!!")
             self.fire()
         else:
@@ -4244,6 +4828,10 @@ Do you want to proceed anyway?
                            VALUES (?, ?, ?, ?)''', 
                            (name, car_reg, purpose, time_in))
                 conn.commit()
+                
+                # Clear input fields immediately when showing confirmation
+                self.clear_input_fields()
+                
                 self.msg("Visitor checked in successfully.", "info", "Success")
                 dialog.close()
 
@@ -4263,6 +4851,10 @@ Do you want to proceed anyway?
                 c.execute('UPDATE visitors SET time_out = ? WHERE id = ?', 
                          (time_out, visit[0]))
                 conn.commit()
+                
+                # Clear input fields immediately when showing confirmation
+                self.clear_input_fields()
+                
                 self.msg("Visitor checked out successfully.", "info", "Success")
                 dialog.close()
 

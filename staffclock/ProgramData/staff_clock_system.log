@@ -131,3 +131,210 @@
 2025-06-21 16:21:28 [INFO] logging_manager:61 - Application Shutting Down
 2025-06-21 16:21:28 [INFO] logging_manager:62 - Shutdown time: 2025-06-21 16:21:28
 2025-06-21 16:21:28 [INFO] logging_manager:63 - ==================================================
+2025-06-30 15:42:05 [INFO] logging_manager:52 - ==================================================
+2025-06-30 15:42:05 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-30 15:42:05 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-30 15:42:05 [INFO] logging_manager:55 - Startup time: 2025-06-30 15:42:05
+2025-06-30 15:42:05 [INFO] logging_manager:56 - ==================================================
+2025-06-30 15:42:05 [INFO] main:233 - Logging initialized on 2025-06-30
+2025-06-30 15:42:05 [INFO] main:108 - Application running from: /Users/andreiiacob/StaffClock/staffclock
+2025-06-30 15:42:05 [INFO] main:109 - Database path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:42:05 [INFO] main:110 - Settings path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:42:05 [INFO] main:111 - Backup folder: /Users/andreiiacob/StaffClock/staffclock/Backups
+2025-06-30 15:42:06 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:42:06 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:42:06 [INFO] logging_manager:52 - ==================================================
+2025-06-30 15:42:06 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-30 15:42:06 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-30 15:42:06 [INFO] logging_manager:55 - Startup time: 2025-06-30 15:42:06
+2025-06-30 15:42:06 [INFO] logging_manager:56 - ==================================================
+2025-06-30 15:42:06 [INFO] main:233 - Logging initialized on 2025-06-30
+2025-06-30 15:42:06 [INFO] main:108 - Application running from: /Users/andreiiacob/StaffClock/staffclock
+2025-06-30 15:42:06 [INFO] main:109 - Database path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:42:06 [INFO] main:110 - Settings path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:42:06 [INFO] main:111 - Backup folder: /Users/andreiiacob/StaffClock/staffclock/Backups
+2025-06-30 15:42:06 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:42:06 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:42:06 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-30 15:42:06 [INFO] main:4347 - Updated screen dimensions in settings: 1512x948
+2025-06-30 15:42:06 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x948
+2025-06-30 15:42:06 [INFO] main:743 - UI setup complete.
+2025-06-30 15:42:06 [INFO] main:1143 - Visitors table checked/created successfully
+2025-06-30 15:42:06 [INFO] main:874 - Real-time backup database initialized successfully
+2025-06-30 15:42:06 [INFO] fingerprint_manager:105 - Fingerprint tables initialized in main database
+2025-06-30 15:42:06 [INFO] fingerprint_manager:68 - FingerprintManager initialized with real device support
+2025-06-30 15:42:06 [WARNING] fingerprint_manager:31 - MOCK FINGERPRINT: Device connection called, but device is not available.
+2025-06-30 15:42:06 [ERROR] fingerprint_manager:126 - Failed to connect to DigitalPersona U.are.U 4500 device
+2025-06-30 15:42:06 [WARNING] main:793 - Fingerprint device not available: Failed to connect to DigitalPersona U.are.U 4500 device
+2025-06-30 15:42:06 [INFO] main:829 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 948, 'admin_pin': '123456', 'exit_code': '654321'}
+2025-06-30 15:42:06 [INFO] main:832 - Initializing TimesheetCheckerThread...
+2025-06-30 15:42:06 [INFO] main:838 - StaffClockInOutSystem initialization complete
+2025-06-30 15:42:13 [INFO] main:2526 - Opening admin tab
+2025-06-30 15:42:18 [INFO] logging_manager:85 - System Event [Clock Action]: Processing in for staff code 2045
+2025-06-30 15:42:18 [INFO] main:894 - Real-time backup created for clock record ID: 1
+2025-06-30 15:42:18 [INFO] logging_manager:81 - User Action: 2045 - Clock In - Clocked in at 15:42
+2025-06-30 15:42:19 [INFO] main:1184 - Input fields cleared for security (inactivity timeout)
+2025-06-30 15:42:23 [INFO] logging_manager:85 - System Event [Clock Action]: Processing out for staff code 2045
+2025-06-30 15:42:23 [INFO] main:894 - Real-time backup created for clock record ID: 1
+2025-06-30 15:42:23 [INFO] logging_manager:81 - User Action: 2045 - Clock Out - Clocked out at 15:42
+2025-06-30 15:42:23 [INFO] main:1184 - Input fields cleared for security (inactivity timeout)
+2025-06-30 15:42:28 [INFO] main:1184 - Input fields cleared for security (inactivity timeout)
+2025-06-30 15:42:36 [ERROR] main:1438 - Error saving note to record 1: 'sqlite3.Connection' object has no attribute 'fetchone'
+2025-06-30 15:42:36 [INFO] main:1410 - Note input dialog result for staff 2045: Saved
+2025-06-30 15:42:36 [INFO] main:1303 - Note prompt result for staff 2045: Yes
+2025-06-30 15:42:38 [INFO] main:1184 - Input fields cleared for security (inactivity timeout)
+2025-06-30 15:42:39 [INFO] logging_manager:60 - ==================================================
+2025-06-30 15:42:39 [INFO] logging_manager:61 - Application Shutting Down
+2025-06-30 15:42:39 [INFO] logging_manager:62 - Shutdown time: 2025-06-30 15:42:39
+2025-06-30 15:42:39 [INFO] logging_manager:63 - ==================================================
+2025-06-30 15:45:37 [INFO] logging_manager:52 - ==================================================
+2025-06-30 15:45:37 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-30 15:45:37 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-30 15:45:37 [INFO] logging_manager:55 - Startup time: 2025-06-30 15:45:37
+2025-06-30 15:45:37 [INFO] logging_manager:56 - ==================================================
+2025-06-30 15:45:37 [INFO] main:233 - Logging initialized on 2025-06-30
+2025-06-30 15:45:37 [INFO] main:108 - Application running from: /Users/andreiiacob/StaffClock/staffclock
+2025-06-30 15:45:37 [INFO] main:109 - Database path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:45:37 [INFO] main:110 - Settings path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:45:37 [INFO] main:111 - Backup folder: /Users/andreiiacob/StaffClock/staffclock/Backups
+2025-06-30 15:45:37 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:45:37 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:45:37 [INFO] logging_manager:52 - ==================================================
+2025-06-30 15:45:37 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-30 15:45:37 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-30 15:45:37 [INFO] logging_manager:55 - Startup time: 2025-06-30 15:45:37
+2025-06-30 15:45:37 [INFO] logging_manager:56 - ==================================================
+2025-06-30 15:45:37 [INFO] main:233 - Logging initialized on 2025-06-30
+2025-06-30 15:45:37 [INFO] main:108 - Application running from: /Users/andreiiacob/StaffClock/staffclock
+2025-06-30 15:45:37 [INFO] main:109 - Database path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:45:37 [INFO] main:110 - Settings path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:45:37 [INFO] main:111 - Backup folder: /Users/andreiiacob/StaffClock/staffclock/Backups
+2025-06-30 15:45:37 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:45:37 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:45:37 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-30 15:45:37 [INFO] main:4441 - Updated screen dimensions in settings: 1512x948
+2025-06-30 15:45:37 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x948
+2025-06-30 15:45:37 [INFO] main:743 - UI setup complete.
+2025-06-30 15:45:37 [INFO] main:1143 - Visitors table checked/created successfully
+2025-06-30 15:45:37 [INFO] main:874 - Real-time backup database initialized successfully
+2025-06-30 15:45:37 [INFO] fingerprint_manager:105 - Fingerprint tables initialized in main database
+2025-06-30 15:45:37 [INFO] fingerprint_manager:68 - FingerprintManager initialized with real device support
+2025-06-30 15:45:37 [WARNING] fingerprint_manager:31 - MOCK FINGERPRINT: Device connection called, but device is not available.
+2025-06-30 15:45:37 [ERROR] fingerprint_manager:126 - Failed to connect to DigitalPersona U.are.U 4500 device
+2025-06-30 15:45:37 [WARNING] main:793 - Fingerprint device not available: Failed to connect to DigitalPersona U.are.U 4500 device
+2025-06-30 15:45:37 [INFO] main:829 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 948, 'admin_pin': '123456', 'exit_code': '654321'}
+2025-06-30 15:45:37 [INFO] main:832 - Initializing TimesheetCheckerThread...
+2025-06-30 15:45:37 [INFO] main:838 - StaffClockInOutSystem initialization complete
+2025-06-30 15:45:41 [INFO] logging_manager:85 - System Event [Clock Action]: Processing in for staff code 2045
+2025-06-30 15:45:41 [INFO] main:894 - Real-time backup created for clock record ID: 2
+2025-06-30 15:45:41 [INFO] logging_manager:81 - User Action: 2045 - Clock In - Clocked in at 15:45
+2025-06-30 15:45:46 [INFO] main:1184 - Input fields cleared for security (inactivity timeout)
+2025-06-30 15:45:49 [INFO] logging_manager:85 - System Event [Clock Action]: Processing out for staff code 2045
+2025-06-30 15:45:49 [INFO] main:894 - Real-time backup created for clock record ID: 2
+2025-06-30 15:45:49 [INFO] logging_manager:81 - User Action: 2045 - Clock Out - Clocked out at 15:45
+2025-06-30 15:45:55 [INFO] main:1465 - Database update: 1 rows affected for record 2
+2025-06-30 15:45:55 [INFO] main:894 - Real-time backup created for clock record ID: 2
+2025-06-30 15:45:56 [INFO] main:1526 - Note successfully added to record 2 for staff 2045: hello zeb
+2025-06-30 15:45:56 [INFO] main:1442 - Note input dialog result for staff 2045: Saved
+2025-06-30 15:45:56 [INFO] main:1330 - Note prompt result for staff 2045: Yes
+2025-06-30 15:45:59 [INFO] main:1184 - Input fields cleared for security (inactivity timeout)
+2025-06-30 15:46:01 [INFO] logging_manager:60 - ==================================================
+2025-06-30 15:46:01 [INFO] logging_manager:61 - Application Shutting Down
+2025-06-30 15:46:01 [INFO] logging_manager:62 - Shutdown time: 2025-06-30 15:46:01
+2025-06-30 15:46:01 [INFO] logging_manager:63 - ==================================================
+2025-06-30 15:47:47 [INFO] logging_manager:52 - ==================================================
+2025-06-30 15:47:47 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-30 15:47:47 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-30 15:47:47 [INFO] logging_manager:55 - Startup time: 2025-06-30 15:47:47
+2025-06-30 15:47:47 [INFO] logging_manager:56 - ==================================================
+2025-06-30 15:47:47 [INFO] main:233 - Logging initialized on 2025-06-30
+2025-06-30 15:47:47 [INFO] main:108 - Application running from: /Users/andreiiacob/StaffClock/staffclock
+2025-06-30 15:47:47 [INFO] main:109 - Database path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:47:47 [INFO] main:110 - Settings path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:47:47 [INFO] main:111 - Backup folder: /Users/andreiiacob/StaffClock/staffclock/Backups
+2025-06-30 15:47:48 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:47:48 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:47:48 [INFO] logging_manager:52 - ==================================================
+2025-06-30 15:47:48 [INFO] logging_manager:53 - Application Starting - Version 1.0.0
+2025-06-30 15:47:48 [INFO] logging_manager:54 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-30 15:47:48 [INFO] logging_manager:55 - Startup time: 2025-06-30 15:47:48
+2025-06-30 15:47:48 [INFO] logging_manager:56 - ==================================================
+2025-06-30 15:47:48 [INFO] main:233 - Logging initialized on 2025-06-30
+2025-06-30 15:47:48 [INFO] main:108 - Application running from: /Users/andreiiacob/StaffClock/staffclock
+2025-06-30 15:47:48 [INFO] main:109 - Database path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:47:48 [INFO] main:110 - Settings path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:47:48 [INFO] main:111 - Backup folder: /Users/andreiiacob/StaffClock/staffclock/Backups
+2025-06-30 15:47:48 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:47:48 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:47:48 [INFO] logging_manager:85 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-30 15:47:48 [INFO] main:4444 - Updated screen dimensions in settings: 1512x948
+2025-06-30 15:47:48 [INFO] logging_manager:85 - System Event [Screen]: Screen dimensions set to 1512x948
+2025-06-30 15:47:48 [INFO] main:743 - UI setup complete.
+2025-06-30 15:47:48 [INFO] main:1143 - Visitors table checked/created successfully
+2025-06-30 15:47:48 [INFO] main:874 - Real-time backup database initialized successfully
+2025-06-30 15:47:48 [INFO] fingerprint_manager:105 - Fingerprint tables initialized in main database
+2025-06-30 15:47:48 [INFO] fingerprint_manager:68 - FingerprintManager initialized with real device support
+2025-06-30 15:47:48 [WARNING] fingerprint_manager:31 - MOCK FINGERPRINT: Device connection called, but device is not available.
+2025-06-30 15:47:48 [ERROR] fingerprint_manager:126 - Failed to connect to DigitalPersona U.are.U 4500 device
+2025-06-30 15:47:48 [WARNING] main:793 - Fingerprint device not available: Failed to connect to DigitalPersona U.are.U 4500 device
+2025-06-30 15:47:48 [INFO] main:829 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 948, 'admin_pin': '123456', 'exit_code': '654321'}
+2025-06-30 15:47:48 [INFO] main:832 - Initializing TimesheetCheckerThread...
+2025-06-30 15:47:48 [INFO] main:838 - StaffClockInOutSystem initialization complete
+2025-06-30 15:48:03 [INFO] main:1184 - Input fields cleared for security (inactivity timeout)
+2025-06-30 15:48:41 [INFO] main:1184 - Input fields cleared for security (inactivity timeout)
+2025-06-30 15:48:44 [INFO] logging_manager:85 - System Event [Clock Action]: Processing in for staff code 2045
+2025-06-30 15:48:44 [INFO] main:894 - Real-time backup created for clock record ID: 3
+2025-06-30 15:48:44 [INFO] logging_manager:81 - User Action: 2045 - Clock In - Clocked in at 15:48
+2025-06-30 15:48:44 [INFO] main:1184 - Input fields cleared for security (inactivity timeout)
+2025-06-30 15:48:47 [INFO] logging_manager:85 - System Event [Clock Action]: Processing out for staff code 2045
+2025-06-30 15:48:47 [INFO] main:894 - Real-time backup created for clock record ID: 3
+2025-06-30 15:48:47 [INFO] logging_manager:81 - User Action: 2045 - Clock Out - Clocked out at 15:48
+2025-06-30 15:48:47 [INFO] main:1184 - Input fields cleared for security (inactivity timeout)
+2025-06-30 15:48:53 [INFO] main:1465 - Database update: 1 rows affected for record 3
+2025-06-30 15:48:53 [INFO] main:894 - Real-time backup created for clock record ID: 3
+2025-06-30 15:48:53 [INFO] main:1526 - Note successfully added to record 3 for staff 2045: hello again
+2025-06-30 15:48:53 [INFO] main:1442 - Note input dialog result for staff 2045: Saved
+2025-06-30 15:48:53 [INFO] main:1330 - Note prompt result for staff 2045: Yes
+2025-06-30 15:48:55 [INFO] logging_manager:60 - ==================================================
+2025-06-30 15:48:55 [INFO] logging_manager:61 - Application Shutting Down
+2025-06-30 15:48:55 [INFO] logging_manager:62 - Shutdown time: 2025-06-30 15:48:55
+2025-06-30 15:48:55 [INFO] logging_manager:63 - ==================================================
+2025-06-30 15:53:46 [INFO] logging_manager:55 - ==================================================
+2025-06-30 15:53:46 [INFO] logging_manager:56 - Application Starting - Version 1.0.0
+2025-06-30 15:53:46 [INFO] logging_manager:57 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-30 15:53:46 [INFO] logging_manager:58 - Startup time: 2025-06-30 15:53:46
+2025-06-30 15:53:46 [INFO] logging_manager:59 - ==================================================
+2025-06-30 15:53:46 [INFO] main:233 - Logging initialized on 2025-06-30
+2025-06-30 15:53:46 [INFO] main:108 - Application running from: /Users/andreiiacob/StaffClock/staffclock
+2025-06-30 15:53:46 [INFO] main:109 - Database path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:53:46 [INFO] main:110 - Settings path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:53:46 [INFO] main:111 - Backup folder: /Users/andreiiacob/StaffClock/staffclock/Backups
+2025-06-30 15:53:46 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:53:46 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:53:46 [INFO] logging_manager:55 - ==================================================
+2025-06-30 15:53:46 [INFO] logging_manager:56 - Application Starting - Version 1.0.0
+2025-06-30 15:53:46 [INFO] logging_manager:57 - Log file: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_clock_system.log
+2025-06-30 15:53:46 [INFO] logging_manager:58 - Startup time: 2025-06-30 15:53:46
+2025-06-30 15:53:46 [INFO] logging_manager:59 - ==================================================
+2025-06-30 15:53:46 [INFO] main:233 - Logging initialized on 2025-06-30
+2025-06-30 15:53:46 [INFO] main:108 - Application running from: /Users/andreiiacob/StaffClock/staffclock
+2025-06-30 15:53:46 [INFO] main:109 - Database path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:53:46 [INFO] main:110 - Settings path: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:53:46 [INFO] main:111 - Backup folder: /Users/andreiiacob/StaffClock/staffclock/Backups
+2025-06-30 15:53:46 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/staff_hours.db
+2025-06-30 15:53:46 [INFO] main:131 - File found: /Users/andreiiacob/StaffClock/staffclock/ProgramData/settings.json
+2025-06-30 15:53:46 [INFO] logging_manager:148 - System Event [Initialization]: Starting StaffClockInOutSystem
+2025-06-30 15:53:46 [INFO] main:4623 - Updated screen dimensions in settings: 1512x948
+2025-06-30 15:53:46 [INFO] logging_manager:148 - System Event [Screen]: Screen dimensions set to 1512x948
+2025-06-30 15:53:46 [INFO] main:743 - UI setup complete.
+2025-06-30 15:53:46 [INFO] main:1193 - Visitors table checked/created successfully
+2025-06-30 15:53:46 [INFO] main:874 - Real-time backup database initialized successfully
+2025-06-30 15:53:46 [INFO] fingerprint_manager:105 - Fingerprint tables initialized in main database
+2025-06-30 15:53:46 [INFO] fingerprint_manager:68 - FingerprintManager initialized with real device support
+2025-06-30 15:53:46 [WARNING] fingerprint_manager:31 - MOCK FINGERPRINT: Device connection called, but device is not available.
+2025-06-30 15:53:46 [ERROR] fingerprint_manager:126 - Failed to connect to DigitalPersona U.are.U 4500 device
+2025-06-30 15:53:46 [WARNING] main:793 - Fingerprint device not available: Failed to connect to DigitalPersona U.are.U 4500 device
+2025-06-30 15:53:47 [INFO] main:829 - Settings loaded: {'start_day': 21, 'end_day': 20, 'printer_IP': '10.60.1.146', 'width': 1512, 'height': 948, 'admin_pin': '123456', 'exit_code': '654321'}
+2025-06-30 15:53:47 [INFO] main:832 - Initializing TimesheetCheckerThread...
+2025-06-30 15:53:47 [INFO] main:838 - StaffClockInOutSystem initialization complete
+2025-06-30 15:54:01 [INFO] main:1234 - Input fields cleared for security (inactivity timeout)
