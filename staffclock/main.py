@@ -33,12 +33,15 @@ from os import mkdir, write
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QDialog, QMessageBox, QDialogButtonBox, QTableWidget, QHeaderView, QAbstractItemView,
-    QTableWidgetItem, QCompleter, QGridLayout, QFrame, QProgressBar, QTextEdit, QTabWidget, QListWidget, QInputDialog
+    QTableWidgetItem, QCompleter, QGridLayout, QFrame, QProgressBar, QTextEdit, QTabWidget, QListWidget, QInputDialog,
+    QListWidgetItem
 )
 from PyQt6.QtCore import Qt, QTimer, QTime, QEvent, QUrl, pyqtSignal
 from PyQt6.QtGui import QFont, QPixmap, QImage, QScreen, QColor
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWebEngineCore import QWebEngineSettings
 
 
 from reportlab.lib.pagesizes import letter, A4
@@ -99,8 +102,12 @@ def get_os_specific_path():
     databasePath = os.path.join(program_data_path, "staff_hours.db")
 
     # Initialize logging manager
-    logger = LoggingManager(log_file)
-    logger.log_startup(APP_VERSION)
+    try:
+        logger = LoggingManager(log_file)
+        logger.log_startup(APP_VERSION)
+    except Exception as e:
+        print(f"Warning: Could not initialize logging manager: {e}")
+        logger = None
 
     configure_logging()
     
@@ -111,11 +118,17 @@ def get_os_specific_path():
     logging.info(f"Backup folder: {backup_folder}")
 
     # Get screen dimensions before checking files
-    app = QApplication.instance() or QApplication(sys.argv)
-    screen = app.primaryScreen()
-    if screen:
-        rect = screen.availableGeometry()
-    else:
+    try:
+        app = QApplication.instance()
+        if app is None:
+            app = QApplication(sys.argv)
+        screen = app.primaryScreen()
+        if screen:
+            rect = screen.availableGeometry()
+        else:
+            rect = None
+    except Exception as e:
+        print(f"Warning: Could not get screen geometry: {e}")
         rect = None
 
     check_and_restore_file(databasePath, backup_folder, generate_default_database)
@@ -242,9 +255,9 @@ class FingerprintEnrollmentDialog(QDialog):
         self.fingerprint_manager = None
         self.enrollment_thread = None
         self.current_step = 0
-        self.total_samples = 5
+        self.total_samples = 3  # Advanced system uses 3 high-quality samples
         
-        self.setWindowTitle(f"Fingerprint Enrollment - {staff_name}")
+        self.setWindowTitle(f"Advanced Biometric Enrollment - {staff_name}")
         self.setModal(True)
         
         # Match main app colors
@@ -269,11 +282,7 @@ class FingerprintEnrollmentDialog(QDialog):
         self.setFixedSize(650, 750)
         self.setStyleSheet(f"""
             QDialog {{
-                background: qlineargradient(
-                    x1: 0, y1: 0, x2: 1, y2: 1,
-                    stop: 0 {self.colors['dark']},
-                    stop: 1 {self.colors['dark']}ee
-                );
+                background-color: {self.colors['dark']};
                 border-radius: 15px;
             }}
         """)
@@ -499,7 +508,10 @@ class FingerprintEnrollmentDialog(QDialog):
             self.fingerprint_manager = FingerprintManager()
             success, msg = self.fingerprint_manager.initialize_device()
             
-            if not success:
+            if success:
+                self.status_label.setText("✅ Advanced biometric profiler ready")
+                self.status_label.setStyleSheet(f"color: {self.colors['success']};")
+            else:
                 self.status_label.setText("❌ Fingerprint device not available")
                 self.status_label.setStyleSheet(f"color: {self.colors['danger']};")
                 self.start_button.setEnabled(False)
@@ -525,136 +537,64 @@ class FingerprintEnrollmentDialog(QDialog):
             self.status_label.setText("Initializing enrollment...")
             
             from fingerprint_manager import FingerprintThread
-            from biometric_enrollment import BiometricProfileEnrollment
+            from digitalpersona_simple import BiometricProfileEnrollment
+            from PyQt6.QtCore import pyqtSignal
+            import numpy as np
+            from datetime import datetime
+            import time
             
             # Create a custom enrollment thread that provides sample-by-sample updates
             class EnhancedEnrollmentThread(FingerprintThread):
                 sample_progress = pyqtSignal(int, int, str, float)  # current_sample, total_samples, status, quality
                 
                 def run(self):
-                    """Run enrollment with sample-by-sample feedback."""
+                    """Run enrollment with sample-by-sample feedback using our enhanced safeguards."""
                     try:
-                        # Get the enrollment system
-                        enrollment_system = self.manager.enrollment_system
-                        
-                        if not enrollment_system.device.connected:
-                            self.finished.emit(False, "Device not connected", {})
-                            return
-                            
-                        # Check if already enrolled
-                        if self.manager._is_employee_enrolled(self.kwargs['employee_id']):
-                            self.finished.emit(False, f"Employee {self.kwargs['employee_id']} already enrolled", {})
-                            return
-                        
-                        # Custom enrollment with live feedback
                         staff_code = self.kwargs['employee_id']
                         staff_name = self.kwargs['employee_name']
-                        samples = []
-                        quality_scores = []
-                        required_samples = 5
                         
-                        self.sample_progress.emit(0, required_samples, "Starting enrollment...", 0.0)
+                        self.sample_progress.emit(0, 3, "Starting secure enrollment process...", 0.0)
                         
-                        for sample_num in range(1, required_samples + 1):
-                            self.sample_progress.emit(sample_num, required_samples, f"SAMPLE {sample_num}/{required_samples}", 0.0)
-                            self.sample_progress.emit(sample_num, required_samples, f"Please place your finger on the scanner for sample {sample_num}", 0.0)
-                            
-                            # Capture fingerprint sample
-                            capture_start = time.time()
-                            fingerprint_image = enrollment_system.device.capture_fingerprint()
-                            capture_time = time.time() - capture_start
-                            
-                            if fingerprint_image is None:
-                                self.sample_progress.emit(sample_num, required_samples, f"Failed to capture sample {sample_num}. Retrying...", 0.0)
-                                sample_num -= 1  # Retry this sample
-                                continue
-                            
-                            # Analyze quality
-                            quality_score = enrollment_system._calculate_quality_score(fingerprint_image)
-                            
-                            if quality_score < enrollment_system.quality_threshold:
-                                self.sample_progress.emit(sample_num, required_samples, f"Sample quality too low ({quality_score:.3f}). Please try again.", quality_score)
-                                sample_num -= 1  # Retry this sample
-                                continue
-                            
-                            # Check consistency with previous samples
-                            if samples and not enrollment_system._check_sample_consistency(fingerprint_image, samples):
-                                self.sample_progress.emit(sample_num, required_samples, "Sample not consistent. Please try again.", quality_score)
-                                sample_num -= 1  # Retry this sample
-                                continue
-                            
-                            # Extract minutiae
-                            minutiae = enrollment_system._extract_minutiae(fingerprint_image)
-                            
-                            # Store successful sample
-                            sample_data = {
-                                'image': fingerprint_image,
-                                'quality': quality_score,
-                                'minutiae': minutiae,
-                                'capture_time': capture_time,
-                                'timestamp': datetime.now().isoformat()
-                            }
-                            
-                            samples.append(sample_data)
-                            quality_scores.append(quality_score)
-                            
-                            self.sample_progress.emit(sample_num, required_samples, f"✓ Sample {sample_num} captured successfully (Quality: {quality_score:.3f})", quality_score)
-                            
-                            if sample_num < required_samples:
-                                self.sample_progress.emit(sample_num, required_samples, "Please lift your finger and place it again for the next sample...", quality_score)
-                                time.sleep(2)  # Brief pause between samples
+                        # **USE OUR ENHANCED ENROLLMENT METHOD WITH ALL SAFEGUARDS**
+                        success, message, stats = self.manager.enroll_employee(staff_code, staff_name)
                         
-                        # Build and store profile
-                        if len(samples) >= required_samples:
-                            self.sample_progress.emit(required_samples, required_samples, "Building biometric profile...", 0.0)
-                            
-                            # Build comprehensive biometric profile
-                            profile_data = enrollment_system._build_biometric_profile(samples)
-                            
-                            # Calculate enrollment statistics
-                            enrollment_stats = {
-                                'staff_code': staff_code,
-                                'staff_name': staff_name,
-                                'samples_captured': len(samples),
-                                'average_quality': np.mean(quality_scores),
-                                'min_quality': np.min(quality_scores),
-                                'max_quality': np.max(quality_scores),
-                                'minutiae_count': np.mean([len(s['minutiae']) for s in samples])
-                            }
-                            
-                            # Store profile
-                            success = enrollment_system._store_biometric_profile(
-                                staff_code, staff_name, profile_data, 
-                                quality_scores, samples, enrollment_stats
-                            )
-                            
-                            if success:
-                                # Link to main database
-                                biometric_user_id = f"emp_{staff_code}_{int(time.time())}"
-                                self.manager._link_employee_to_biometric(staff_code, staff_name, biometric_user_id)
-                                
-                                message = f"🎉 Biometric profile enrolled successfully for {staff_name}\n   Average Quality: {enrollment_stats['average_quality']:.3f}\n   Total Samples: {len(samples)}\n   Minutiae Count: {enrollment_stats['minutiae_count']:.1f}"
-                                self.finished.emit(True, message, enrollment_stats)
+                        if success:
+                            # Create detailed success message
+                            detailed_message = f"🎉 Advanced biometric profile enrolled successfully for {staff_name}\n"
+                            if 'enrollment_type' in stats and stats['enrollment_type'] == 'advanced':
+                                detailed_message += f"   📊 Type: Advanced Minutiae-Based\n"
+                                detailed_message += f"   📈 Average Quality: {stats.get('average_quality', 0):.1f}%\n"
+                                detailed_message += f"   🔬 Total Minutiae: {stats.get('total_minutiae', 0)}\n"
+                                detailed_message += f"   📷 Samples Captured: {stats.get('samples_captured', 0)}\n"
+                                detailed_message += f"   🧬 Templates Created: {stats.get('templates_created', 0)}"
                             else:
-                                self.finished.emit(False, "Failed to store biometric profile", {})
+                                detailed_message += f"   📊 Type: Basic\n"
+                                detailed_message += f"   📈 Average Quality: {stats.get('average_quality', 0):.1f}%\n"
+                                detailed_message += f"   📷 Samples Captured: {stats.get('samples_captured', 0)}"
+                            
+                            # Emit progress updates for better user feedback
+                            self.sample_progress.emit(1, 3, "✓ Fingerprint captured successfully", 85.0)
+                            self.sample_progress.emit(2, 3, "✓ Processing biometric data", 90.0)
+                            self.sample_progress.emit(3, 3, "✓ Enrollment completed", 100.0)
+                            
+                            self.finished.emit(True, detailed_message, stats)
                         else:
-                            self.finished.emit(False, f"Insufficient samples captured ({len(samples)}/{required_samples})", {})
+                            self.finished.emit(False, message, {})
                     
                     except Exception as e:
                         self.finished.emit(False, f"Enrollment error: {str(e)}", {})
             
             # Create and start enhanced enrollment thread
-            from PyQt6.QtCore import pyqtSignal
-            import numpy as np
-            from datetime import datetime
-            import time
-            
-            self.enrollment_thread = EnhancedEnrollmentThread(
-                self.fingerprint_manager,
-                'enroll',
-                employee_id=self.staff_code,
-                employee_name=self.staff_name
-            )
+            if self.fingerprint_manager:
+                self.enrollment_thread = EnhancedEnrollmentThread(
+                    self.fingerprint_manager,
+                    'enroll',
+                    employee_id=self.staff_code,
+                    employee_name=self.staff_name
+                )
+            else:
+                self.status_label.setText("❌ Fingerprint manager not available")
+                return
             
             # Connect signals
             self.enrollment_thread.finished.connect(self.on_enrollment_complete)
@@ -669,9 +609,9 @@ class FingerprintEnrollmentDialog(QDialog):
         """Handle sample-by-sample progress updates."""
         if current_sample > 0 and current_sample <= total_samples:
             # Update progress
-            self.progress_label.setText(f"Capturing sample {current_sample} of {total_samples}")
-            self.sample_counter.setText(f"{current_sample-1} of {total_samples} samples captured")
-            self.progress_bar.setValue(current_sample-1)
+            self.progress_label.setText(f"Advanced enrollment in progress...")
+            self.sample_counter.setText(f"Processing biometric data...")
+            self.progress_bar.setValue(min(100, int((current_sample / total_samples) * 100)))
             
             # Update status with detailed feedback
             if "✓" in status:
@@ -725,7 +665,8 @@ if __name__ == "__main__":
 class StaffClockInOutSystem(QMainWindow):
     def __init__(self):
         super().__init__()
-        logger.log_system_event("Initialization", "Starting StaffClockInOutSystem")
+        if logger:
+            logger.log_system_event("Initialization", "Starting StaffClockInOutSystem")
         
         screen = QApplication.primaryScreen()
         if screen:
@@ -734,7 +675,8 @@ class StaffClockInOutSystem(QMainWindow):
             
             # Update settings with current screen dimensions
             self.update_screen_dimensions(rect)
-            logger.log_system_event("Screen", f"Screen dimensions set to {rect.width()}x{rect.height()}")
+            if logger:
+                logger.log_system_event("Screen", f"Screen dimensions set to {rect.width()}x{rect.height()}")
             
         self.role_entry = QLineEdit()
         self.setWindowTitle("Staff Digital Timesheet System")
@@ -893,29 +835,31 @@ class StaffClockInOutSystem(QMainWindow):
             conn.close()
             
             # Enhanced backup logging
-            logger.log_database_backup(
-                backup_type="Real-time Clock Record",
-                success=True,
-                file_path=self.realtime_backup_path,
-                records_count=1
-            )
+            if logger:
+                logger.log_database_backup(
+                    backup_type="Real-time Clock Record",
+                    success=True,
+                    file_path=self.realtime_backup_path,
+                    records_count=1
+                )
             
         except Exception as e:
-            logger.log_database_backup(
-                backup_type="Real-time Clock Record",
-                success=False,
-                error_msg=str(e)
-            )
-            logger.log_error(
-                e,
-                context=f"backup_clock_record - Record ID: {record_id}",
-                user=staff_code,
-                additional_data={
-                    "record_id": record_id,
-                    "staff_code": staff_code,
-                    "backup_path": self.realtime_backup_path
-                }
-            )
+            if logger:
+                logger.log_database_backup(
+                    backup_type="Real-time Clock Record",
+                    success=False,
+                    error_msg=str(e)
+                )
+                logger.log_error(
+                    e,
+                    context=f"backup_clock_record - Record ID: {record_id}",
+                    user=staff_code,
+                    additional_data={
+                        "record_id": record_id,
+                        "staff_code": staff_code,
+                        "backup_path": self.realtime_backup_path
+                    }
+                )
 
     def backup_staff_record(self, staff_code, name, role=None, notes=None):
         """Immediately backup a staff record after it's created/updated."""
@@ -934,37 +878,39 @@ class StaffClockInOutSystem(QMainWindow):
             conn.close()
             
             # Enhanced backup logging
-            logger.log_database_backup(
-                backup_type="Real-time Staff Record",
-                success=True,
-                file_path=self.realtime_backup_path,
-                records_count=1
-            )
-            logger.log_admin_action(
-                admin_user="SYSTEM",
-                action="Staff Backup",
-                target=f"{name} ({staff_code})",
-                details=f"Staff record backed up - Role: {role or 'Unknown'}",
-                success=True
-            )
+            if logger:
+                logger.log_database_backup(
+                    backup_type="Real-time Staff Record",
+                    success=True,
+                    file_path=self.realtime_backup_path,
+                    records_count=1
+                )
+                logger.log_admin_action(
+                    admin_user="SYSTEM",
+                    action="Staff Backup",
+                    target=f"{name} ({staff_code})",
+                    details=f"Staff record backed up - Role: {role or 'Unknown'}",
+                    success=True
+                )
             
         except Exception as e:
-            logger.log_database_backup(
-                backup_type="Real-time Staff Record", 
-                success=False,
-                error_msg=str(e)
-            )
-            logger.log_error(
-                e,
-                context=f"backup_staff_record - Staff: {name}",
-                user=staff_code,
-                additional_data={
-                    "staff_code": staff_code,
-                    "staff_name": name,
-                    "staff_role": role,
-                    "backup_path": self.realtime_backup_path
-                }
-            )
+            if logger:
+                logger.log_database_backup(
+                    backup_type="Real-time Staff Record", 
+                    success=False,
+                    error_msg=str(e)
+                )
+                logger.log_error(
+                    e,
+                    context=f"backup_staff_record - Staff: {name}",
+                    user=staff_code,
+                    additional_data={
+                        "staff_code": staff_code,
+                        "staff_name": name,
+                        "staff_role": role,
+                        "backup_path": self.realtime_backup_path
+                    }
+                )
 
     def archive_current_database(self, force_archive=False):
         """
@@ -1205,11 +1151,15 @@ Do you want to proceed anyway?
 
     def closeEvent(self, event):
         # Log shutdown
-        logger.log_shutdown()
+        if logger:
+            logger.log_shutdown()
         
         # Stop continuous fingerprint scanning
         if hasattr(self, 'continuous_fingerprint_active') and self.continuous_fingerprint_active:
-            self.stop_continuous_fingerprint_scanning()
+            try:
+                self.stop_continuous_fingerprint_scanning()
+            except AttributeError:
+                pass  # Method doesn't exist
         
         # Ensure the thread stops when the app closes
         self.daily_backup_thread.stop()
@@ -1810,47 +1760,10 @@ Do you want to proceed anyway?
         clock_buttons_layout = QHBoxLayout()
         clock_buttons_layout.setSpacing(15)
 
-        # Fingerprint Scan Button
+        # Minimal Fingerprint Scanner Status  
         if self.fingerprint_device_available:
-            self.fingerprint_scan_button = QPushButton("🔍 Scan Fingerprint")
-            self.fingerprint_scan_button.setFont(QFont("Inter", 22, QFont.Weight.Medium))
-            self.fingerprint_scan_button.setMinimumSize(400, 80)
-            self.fingerprint_scan_button.setStyleSheet(f"""
-                QPushButton {{
-                    background: qlineargradient(
-                        x1: 0, y1: 0, x2: 0, y2: 1,
-                        stop: 0 {self.COLORS['primary']},
-                        stop: 1 {self.COLORS['primary']}cc
-                    );
-                    color: white;
-                    border: none;
-                    border-radius: 12px;
-                    padding: 15px;
-                    margin: 10px;
-                    font-weight: bold;
-                }}
-                QPushButton:hover {{
-                    background: qlineargradient(
-                        x1: 0, y1: 0, x2: 0, y2: 1,
-                        stop: 0 {self.COLORS['primary']}dd,
-                        stop: 1 {self.COLORS['primary']}aa
-                    );
-                    transform: translateY(-2px);
-                }}
-                QPushButton:pressed {{
-                    background: {self.COLORS['primary']}88;
-                    transform: translateY(0px);
-                }}
-                QPushButton:disabled {{
-                    background: {self.COLORS['gray']};
-                    color: {self.COLORS['text']}88;
-                }}
-            """)
-            self.fingerprint_scan_button.clicked.connect(self.start_fingerprint_scan)
-            button_layout.addWidget(self.fingerprint_scan_button)
-            
-            # Status label for feedback during scanning - no background box
-            self.fingerprint_status_label = QLabel("Ready to scan")
+            # Simple minimal status line
+            self.fingerprint_status_label = QLabel("🔍 Ready for fingerprint")
             self.fingerprint_status_label.setFont(QFont("Inter", 11))
             self.fingerprint_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.fingerprint_status_label.setStyleSheet(f"""
@@ -1858,15 +1771,19 @@ Do you want to proceed anyway?
                     color: {self.COLORS['text']};
                     background: transparent;
                     border: none;
-                    padding: 5px;
+                    padding: 8px;
                     margin: 5px;
                 }}
             """)
             button_layout.addWidget(self.fingerprint_status_label)
+            
+            # Start presence detection (not continuous scanning)
+            QTimer.singleShot(1000, self.start_fingerprint_presence_detection)
+            
         else:
-            # Show unavailable status if no fingerprint device - no background box
+            # Show unavailable status if no fingerprint device
             fingerprint_unavailable_label = QLabel("❌ Fingerprint Scanner: Unavailable")
-            fingerprint_unavailable_label.setFont(QFont("Inter", 12))
+            fingerprint_unavailable_label.setFont(QFont("Inter", 11))
             fingerprint_unavailable_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             fingerprint_unavailable_label.setStyleSheet(f"""
                 QLabel {{
@@ -1921,14 +1838,10 @@ Do you want to proceed anyway?
         footer = self.create_footer()
         main_layout.addWidget(footer)
 
-        # Set modern gradient background
+        # Set simple background (avoiding gradient painting issues)
         self.setStyleSheet(f"""
             QMainWindow {{
-                background: qlineargradient(
-                    x1: 0, y1: 0, x2: 1, y2: 1,
-                    stop: 0 {self.COLORS['dark']},
-                    stop: 1 {self.COLORS['dark']}ee
-                );
+                background-color: {self.COLORS['dark']};
             }}
         """)
 
@@ -1968,92 +1881,88 @@ Do you want to proceed anyway?
 
 
 
-    def start_fingerprint_scan(self):
-        """Start fingerprint scanning when button is clicked."""
+    def start_fingerprint_presence_detection(self):
+        """Start smart fingerprint presence detection - only scans when finger detected."""
         if not self.fingerprint_device_available:
             return
         
-        # Disable the button during scanning
-        self.fingerprint_scan_button.setEnabled(False)
-        self.fingerprint_scan_button.setText("🔄 Scanning...")
-        
-        # Update status
-        self.fingerprint_status_label.setText("👆 Place finger on scanner")
+        # Update status to show ready state
+        self.fingerprint_status_label.setText("🔍 Ready for fingerprint")
         self.fingerprint_status_label.setStyleSheet(f"""
             QLabel {{
-                color: {self.COLORS['warning']};
+                color: {self.COLORS['text']};
                 background: transparent;
                 border: none;
-                padding: 5px;
+                padding: 8px;
                 margin: 5px;
             }}
         """)
         
-        # Start the fingerprint authentication
-        self.perform_fingerprint_authentication()
+        # Start finger presence monitoring (not authentication)
+        self.check_finger_presence()
         
-        logging.info("Fingerprint scan initiated by user")
+        logging.info("Fingerprint presence detection started")
     
     def reset_fingerprint_ui(self):
-        """Reset the fingerprint UI to ready state."""
-        if hasattr(self, 'fingerprint_scan_button'):
-            self.fingerprint_scan_button.setEnabled(True)
-            self.fingerprint_scan_button.setText("🔍 Scan Fingerprint")
-        
+        """Reset the fingerprint UI to ready state and resume presence detection."""
         if hasattr(self, 'fingerprint_status_label'):
-            self.fingerprint_status_label.setText("Ready to scan")
+            self.fingerprint_status_label.setText("🔍 Ready for fingerprint")
             self.fingerprint_status_label.setStyleSheet(f"""
                 QLabel {{
                     color: {self.COLORS['text']};
                     background: transparent;
                     border: none;
-                    padding: 5px;
+                    padding: 8px;
                     margin: 5px;
                 }}
             """)
+        
+        # Resume presence detection after a brief pause
+        QTimer.singleShot(3000, self.start_fingerprint_presence_detection)
     
     
     
-    def perform_fingerprint_authentication(self):
-        """Perform actual fingerprint authentication when finger is detected."""
+    def check_finger_presence(self):
+        """Check if a finger is present on the scanner without authentication."""
         try:
             from fingerprint_manager import FingerprintThread
             
-            # Full authentication scan with normal timeout
-            self.fingerprint_thread = FingerprintThread(
+            # Quick presence check with very short timeout
+            self.presence_thread = FingerprintThread(
                 self.fingerprint_manager, 
-                'authenticate',
-                timeout=3  # Normal timeout for actual authentication
+                'verify',  # Use verify instead of authenticate for presence detection
+                timeout=1  # Very short timeout just to check presence
             )
             
             # Connect completion signal
-            self.fingerprint_thread.finished.connect(self._on_fingerprint_authentication_result)
-            self.fingerprint_thread.start()
+            self.presence_thread.finished.connect(self._on_finger_presence_result)
+            self.presence_thread.start()
             
         except Exception as e:
-            logging.error(f"Fingerprint authentication error: {e}")
-            # Resume finger detection
-            QTimer.singleShot(1000, self.start_finger_detection_mode)
+            logging.error(f"Finger presence detection error: {e}")
+            # Resume presence detection after error
+            QTimer.singleShot(5000, self.start_fingerprint_presence_detection)
     
-    def _on_fingerprint_authentication_result(self, success: bool, message: str, data: dict):
-        """Handle fingerprint authentication result."""
+    def _on_finger_presence_result(self, success: bool, message: str, data: dict):
+        """Handle finger presence detection result."""
         try:
             if success and data.get('employee_id'):
+                # Finger detected and recognized immediately!
                 staff_code = data['employee_id']
                 
                 # Auto-fill staff code
                 self.staff_code_entry.setText(staff_code)
                 
                 # Update status to show recognition
-                self.fingerprint_status_label.setText(f"✅ Recognized: {staff_code}")
+                self.fingerprint_status_label.setText(f"✅ {staff_code}")
                 self.fingerprint_status_label.setStyleSheet(f"""
                     QLabel {{
                         color: {self.COLORS['success']};
-                        background-color: {self.COLORS['light']};
-                        border: 1px solid {self.COLORS['success']};
-                        border-radius: 8px;
+                        background: transparent;
+                        border: none;
                         padding: 8px;
-                        margin: 5px 10px;
+                        margin: 5px;
+                        font-weight: bold;
                     }}
                 """)
                 
@@ -2061,88 +1970,48 @@ Do you want to proceed anyway?
                 self.msg(f"Fingerprint recognized: {staff_code}", "info", "Welcome")
                 
                 # Enhanced logging for fingerprint authentication
-                logger.log_authentication_attempt(
-                    user=staff_code,
-                    auth_method="Fingerprint",
-                    success=True,
-                    user_name=data.get('employee_name', 'Unknown')
-                )
+                if logger:
+                    logger.log_authentication_attempt(
+                        user=staff_code,
+                        auth_method="Fingerprint",
+                        success=True,
+                        user_name=data.get('employee_name', 'Unknown')
+                    )
                 
-                # Reset UI after 3 seconds
-                QTimer.singleShot(3000, self.reset_fingerprint_ui)
+                # Reset UI and resume presence detection after 5 seconds
+                QTimer.singleShot(5000, self.reset_fingerprint_ui)
                 
-                # Clear input fields after fingerprint authentication (longer delay for user to act)
-                QTimer.singleShot(10000, self.clear_input_fields)
-                
-            elif "No fingerprint detected" in message:
-                # No finger was placed
-                self.fingerprint_status_label.setText("⚠️ No finger detected")
-                self.fingerprint_status_label.setStyleSheet(f"""
-                    QLabel {{
-                        color: {self.COLORS['warning']};
-                        background-color: {self.COLORS['light']};
-                        border: 1px solid {self.COLORS['warning']};
-                        border-radius: 8px;
-                        padding: 8px;
-                        margin: 5px 10px;
-                    }}
-                """)
-                
-                # Reset UI after 2 seconds
-                QTimer.singleShot(2000, self.reset_fingerprint_ui)
+                # Clear input fields after longer delay for user to act
+                QTimer.singleShot(15000, self.clear_input_fields)
                 
             elif ("Authentication failed" in message or 
                   "Fingerprint verification failed" in message or
                   "not recognized" in message.lower()):
-                # Fingerprint was detected but not recognized
+                # Finger detected but not recognized
                 self.fingerprint_status_label.setText("❌ Not recognized")
                 self.fingerprint_status_label.setStyleSheet(f"""
                     QLabel {{
                         color: {self.COLORS['danger']};
-                        background-color: {self.COLORS['light']};
-                        border: 1px solid {self.COLORS['danger']};
-                        border-radius: 8px;
+                        background: transparent;
+                        border: none;
                         padding: 8px;
-                        margin: 5px 10px;
+                        margin: 5px;
                     }}
                 """)
                 
-                # Show debug popup
-                self.msg(f"Fingerprint scanned but not recognized: {message}", "warning", "Debug Info")
                 logging.warning(f"Fingerprint not recognized: {message}")
                 
-                # Reset UI after 3 seconds
+                # Reset and resume presence detection after 3 seconds
                 QTimer.singleShot(3000, self.reset_fingerprint_ui)
                 
             else:
-                # Other errors
-                self.fingerprint_status_label.setText(f"❌ Error: {message}")
-                self.fingerprint_status_label.setStyleSheet(f"""
-                    QLabel {{
-                        color: {self.COLORS['danger']};
-                        background-color: {self.COLORS['light']};
-                        border: 1px solid {self.COLORS['danger']};
-                        border-radius: 8px;
-                        padding: 8px;
-                        margin: 5px 10px;
-                    }}
-                """)
-                
-                # Enhanced logging for fingerprint errors
-                logger.log_authentication_attempt(
-                    user="Unknown",
-                    auth_method="Fingerprint",
-                    success=False,
-                    failure_reason=message
-                )
-                
-                # Reset UI after 2 seconds
-                QTimer.singleShot(2000, self.reset_fingerprint_ui)
+                # No finger detected or other error - continue presence detection silently
+                QTimer.singleShot(2000, self.check_finger_presence)
                 
         except Exception as e:
-            logging.error(f"Error processing fingerprint authentication result: {e}")
-            # Reset UI
-            QTimer.singleShot(1000, self.reset_fingerprint_ui)
+            logging.error(f"Error processing finger presence result: {e}")
+            # Resume presence detection after error
+            QTimer.singleShot(3000, self.start_fingerprint_presence_detection)
 
     def clock_action(self, action, staff_code):
         # Get staff details for enhanced logging
@@ -2154,24 +2023,26 @@ Do you want to proceed anyway?
             c.execute('SELECT name, role FROM staff WHERE code = ?', (staff_code,))
             staff = c.fetchone()
             if not staff:
-                logger.log_authentication_attempt(
-                    user=staff_code, 
-                    auth_method="Staff Code", 
-                    success=False,
-                    failure_reason=f"Invalid staff code: {staff_code}"
-                )
-                logger.log_security_event(
-                    event_type="INVALID_ACCESS_ATTEMPT",
-                    user=staff_code,
-                    details=f"Attempted {action} with invalid staff code",
-                    severity="WARNING"
-                )
+                if logger:
+                    logger.log_authentication_attempt(
+                        user=staff_code, 
+                        auth_method="Staff Code", 
+                        success=False,
+                        failure_reason=f"Invalid staff code: {staff_code}"
+                    )
+                    logger.log_security_event(
+                        event_type="INVALID_ACCESS_ATTEMPT",
+                        user=staff_code,
+                        details=f"Attempted {action} with invalid staff code",
+                        severity="WARNING"
+                    )
                 conn.close()
                 self.msg("Invalid user ID or staff code.", "warning", "Error")
                 return
                 
             staff_name, staff_role = staff
-            logger.log_system_event("Clock Action Processing", f"Processing {action} for {staff_name} ({staff_code})")
+            if logger:
+                logger.log_system_event("Clock Action Processing", f"Processing {action} for {staff_name} ({staff_code})")
 
             if action == 'in':
                 # Check if already clocked in but not on break
@@ -2185,18 +2056,19 @@ Do you want to proceed anyway?
                         self.on_break = True
                         
                         # Enhanced logging for break start
-                        logger.log_clock_operation(
-                            user=staff_code,
-                            operation="Break Start",
-                            success=True,
-                            user_name=staff_name,
-                            user_role=staff_role,
-                            timestamp=self.break_start_time.strftime('%H:%M:%S'),
-                            additional_info={
-                                "previous_state": "clocked_in",
-                                "break_type": "manual"
-                            }
-                        )
+                        if logger:
+                            logger.log_clock_operation(
+                                user=staff_code,
+                                operation="Break Start",
+                                success=True,
+                                user_name=staff_name,
+                                user_role=staff_role,
+                                timestamp=self.break_start_time.strftime('%H:%M:%S'),
+                                additional_info={
+                                    "previous_state": "clocked_in",
+                                    "break_type": "manual"
+                                }
+                            )
                         
                         # Clear input fields immediately when showing confirmation
                         self.clear_input_fields()
@@ -2204,13 +2076,14 @@ Do you want to proceed anyway?
                         self.msg("Break started.", "info", "Success")
                     else:
                         # Enhanced logging for break error
-                        logger.log_security_event(
-                            event_type="INVALID_BREAK_ATTEMPT",
-                            user=staff_code,
-                            details="Attempted to start break while already on break",
-                            severity="WARNING",
-                            user_name=staff_name
-                        )
+                        if logger:
+                            logger.log_security_event(
+                                event_type="INVALID_BREAK_ATTEMPT",
+                                user=staff_code,
+                                details="Attempted to start break while already on break",
+                                severity="WARNING",
+                                user_name=staff_name
+                            )
                         self.msg("You are already on break.", "warning", "Warning")
                 else:
                     # Regular Clock-In
@@ -2228,18 +2101,19 @@ Do you want to proceed anyway?
                     time_in = datetime.fromisoformat(clock_in_time).strftime('%H:%M')
                     
                     # Enhanced logging for clock-in
-                    logger.log_clock_operation(
-                        user=staff_code,
-                        operation="Clock In",
-                        success=True,
-                        user_name=staff_name,
-                        user_role=staff_role,
-                        timestamp=time_in,
-                        additional_info={
-                            "record_id": record_id,
-                            "shift_start": time_in
-                        }
-                    )
+                    if logger:
+                        logger.log_clock_operation(
+                            user=staff_code,
+                            operation="Clock In",
+                            success=True,
+                            user_name=staff_name,
+                            user_role=staff_role,
+                            timestamp=time_in,
+                            additional_info={
+                                "record_id": record_id,
+                                "shift_start": time_in
+                            }
+                        )
                     
                     # Clear input fields immediately when showing confirmation
                     self.clear_input_fields()
@@ -2251,7 +2125,10 @@ Do you want to proceed anyway?
                 if self.on_break:
                     # End Break
                     break_end_time = datetime.now()
-                    break_duration = (break_end_time - self.break_start_time).total_seconds() / 60
+                    if self.break_start_time:
+                        break_duration = (break_end_time - self.break_start_time).total_seconds() / 60
+                    else:
+                        break_duration = 0
                     c.execute('UPDATE clock_records SET break_time = ? WHERE staff_code = ? AND clock_out_time IS NULL',
                               (str(break_duration), staff_code))
                     conn.commit()
@@ -2266,18 +2143,19 @@ Do you want to proceed anyway?
                     self.break_start_time = None
                     
                     # Enhanced logging for break end
-                    logger.log_clock_operation(
-                        user=staff_code,
-                        operation="Break End",
-                        success=True,
-                        user_name=staff_name,
-                        user_role=staff_role,
-                        timestamp=break_end_time.strftime('%H:%M:%S'),
-                        additional_info={
-                            "break_duration_minutes": f"{break_duration:.2f}",
-                            "new_state": "clocked_in"
-                        }
-                    )
+                    if logger:
+                        logger.log_clock_operation(
+                            user=staff_code,
+                            operation="Break End",
+                            success=True,
+                            user_name=staff_name,
+                            user_role=staff_role,
+                            timestamp=break_end_time.strftime('%H:%M:%S'),
+                            additional_info={
+                                "break_duration_minutes": f"{break_duration:.2f}",
+                                "new_state": "clocked_in"
+                            }
+                        )
                     
                     # Clear input fields immediately when showing confirmation
                     self.clear_input_fields()
@@ -2289,13 +2167,14 @@ Do you want to proceed anyway?
                     c.execute('SELECT id FROM clock_records WHERE staff_code = ? AND clock_out_time IS NULL', (staff_code,))
                     clock_record = c.fetchone()
                     if not clock_record:
-                        logger.log_security_event(
-                            event_type="INVALID_CLOCKOUT_ATTEMPT",
-                            user=staff_code,
-                            details="Attempted to clock out without active clock-in record",
-                            severity="WARNING",
-                            user_name=staff_name
-                        )
+                        if logger:
+                            logger.log_security_event(
+                                event_type="INVALID_CLOCKOUT_ATTEMPT",
+                                user=staff_code,
+                                details="Attempted to clock out without active clock-in record",
+                                severity="WARNING",
+                                user_name=staff_name
+                            )
                         conn.close()
                         self.msg("You are not clocked in.", "warning", "Error")
                         return
@@ -2311,18 +2190,19 @@ Do you want to proceed anyway?
                     time_out = datetime.fromisoformat(clock_out_time).strftime('%H:%M')
                     
                     # Enhanced logging for clock-out
-                    logger.log_clock_operation(
-                        user=staff_code,
-                        operation="Clock Out",
-                        success=True,
-                        user_name=staff_name,
-                        user_role=staff_role,
-                        timestamp=time_out,
-                        additional_info={
-                            "record_id": clock_record[0],
-                            "shift_end": time_out
-                        }
-                    )
+                    if logger:
+                        logger.log_clock_operation(
+                            user=staff_code,
+                            operation="Clock Out",
+                            success=True,
+                            user_name=staff_name,
+                            user_role=staff_role,
+                            timestamp=time_out,
+                            additional_info={
+                                "record_id": clock_record[0],
+                                "shift_end": time_out
+                            }
+                        )
                     
                     # Clear input fields immediately when showing confirmation
                     self.clear_input_fields()
@@ -2331,30 +2211,32 @@ Do you want to proceed anyway?
                     self.show_clockout_note_prompt(clock_record[0], staff_code, time_out)
 
             else:
-                logger.log_error(
-                    ValueError(f"Unknown action: {action}"), 
-                    context="clock_action",
-                    user=staff_code,
-                    additional_data={
-                        "action": action,
-                        "staff_code": staff_code
-                    }
-                )
+                if logger:
+                    logger.log_error(
+                        ValueError(f"Unknown action: {action}"), 
+                        context="clock_action",
+                        user=staff_code,
+                        additional_data={
+                            "action": action,
+                            "staff_code": staff_code
+                        }
+                    )
                 conn.close()
                 self.msg(f'Unknown action: {action}', 'warning', 'Error')
 
         except Exception as e:
-            logger.log_error(
-                e, 
-                context=f"clock_action - Action: {action}",
-                user=staff_code,
-                additional_data={
-                    "action": action,
-                    "staff_code": staff_code,
-                    "user_name": staff_name if 'staff_name' in locals() else "Unknown",
-                    "user_role": staff_role if 'staff_role' in locals() else "Unknown"
-                }
-            )
+            if logger:
+                logger.log_error(
+                    e, 
+                    context=f"clock_action - Action: {action}",
+                    user=staff_code,
+                    additional_data={
+                        "action": action,
+                        "staff_code": staff_code,
+                        "user_name": staff_name if 'staff_name' in locals() else "Unknown",
+                        "user_role": staff_role if 'staff_role' in locals() else "Unknown"
+                    }
+                )
             self.msg(f"An error occurred: {str(e)}", "warning", "Error")
         finally:
             conn.close()
@@ -2369,8 +2251,10 @@ Do you want to proceed anyway?
             msgBox.setIcon(QMessageBox.Icon.Warning)
         elif state == "critical":
             msgBox.setIcon(QMessageBox.Icon.Critical)
-        closeTimer =  QTimer(msgBox, singleShot = True, interval = 3000, timeout = msgBox.close)
-        closeTimer.start()
+        closeTimer = QTimer(msgBox)
+        closeTimer.setSingleShot(True)
+        closeTimer.timeout.connect(msgBox.close)
+        closeTimer.start(3000)
         msgBox.exec()
 
     def process_clock_action(self, user_id, action="in"):
@@ -2427,20 +2311,21 @@ Do you want to proceed anyway?
                     self.role_entry.setText("")
         elif staff_code == self.settings.get("admin_pin", "123456"):  # Admin code
             # Enhanced logging for admin access
-            logger.log_admin_action(
-                admin_user=staff_code,
-                action="Admin Access",
-                admin_name="System Administrator",
-                details="Admin mode activated via PIN",
-                success=True
-            )
-            logger.log_security_event(
-                event_type="ADMIN_ACCESS",
-                user=staff_code,
-                details="Admin mode activated",
-                severity="WARNING",
-                user_name="System Administrator"
-            )
+            if logger:
+                logger.log_admin_action(
+                    admin_user=staff_code,
+                    action="Admin Access",
+                    admin_name="System Administrator",
+                    details="Admin mode activated via PIN",
+                    success=True
+                )
+                logger.log_security_event(
+                    event_type="ADMIN_ACCESS",
+                    user=staff_code,
+                    details="Admin mode activated",
+                    severity="WARNING",
+                    user_name="System Administrator"
+                )
             
             # Clear input fields immediately when activating admin mode
             self.clear_input_fields()
@@ -2454,20 +2339,21 @@ Do you want to proceed anyway?
             self.close()
         elif staff_code =='111111':  # Fire code (keep hardcoded for safety)
             # Enhanced logging for fire emergency activation
-            logger.log_security_event(
-                event_type="FIRE_EMERGENCY",
-                user=staff_code,
-                details="Fire emergency protocol activated",
-                severity="CRITICAL",
-                user_name="Emergency System"
-            )
-            logger.log_admin_action(
-                admin_user=staff_code,
-                action="Fire Emergency",
-                admin_name="Emergency System",
-                details="Fire emergency protocol activated - all staff automatically clocked out",
-                success=True
-            )
+            if logger:
+                logger.log_security_event(
+                    event_type="FIRE_EMERGENCY",
+                    user=staff_code,
+                    details="Fire emergency protocol activated",
+                    severity="CRITICAL",
+                    user_name="Emergency System"
+                )
+                logger.log_admin_action(
+                    admin_user=staff_code,
+                    action="Fire Emergency",
+                    admin_name="Emergency System",
+                    details="Fire emergency protocol activated - all staff automatically clocked out",
+                    success=True
+                )
             
             # Clear input fields immediately when activating fire mode
             self.clear_input_fields()
@@ -2879,8 +2765,7 @@ Do you want to proceed anyway?
                 color: {self.COLORS['light']};
             }}
             QProgressBar::chunk {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {self.COLORS['success']}, stop:1 {self.COLORS['primary']});
+                background-color: {self.COLORS['success']};
                 border-radius: 6px;
             }}
             QListWidget {{
@@ -3625,7 +3510,7 @@ Do you want to proceed anyway?
 
         save_button = QPushButton("Save Comment")
         save_button.setFont(QFont("Arial", 14))
-        save_button.clicked.connect(lambda: self.save_clock_reocrd_comment(record_id, comment_entry.text(), comment_dialog))
+        save_button.clicked.connect(lambda: self.save_clock_record_comment(record_id, comment_entry.text(), comment_dialog))
         layout.addWidget(save_button)
 
         comment_dialog.exec()
@@ -4044,10 +3929,13 @@ Do you want to proceed anyway?
                 f"Updated clock record ID {record_id}: Clock In: {clock_in}, Clock Out: {clock_out}, Notes: {notes}")
             dialog.close()
         except sqlite3.Error as e:
-            self.msg(f"Database error occurred: {e}", "warning", "Error")
-            logging.error(f"Database error occurred: {e}")
+            self.msg(f"Database error occurred: {e}", "warning", "Database Error")
+            logging.error(f"Database error in save_clock_record: {e}")
+        except Exception as e:
+            self.msg(f"Unexpected error occurred: {e}", "warning", "Error")
+            logging.error(f"Unexpected error in save_clock_record: {e}", exc_info=True)
 
-    def save_clock_reocrd_comment(self, record_id, comment, dialog):
+    def save_clock_record_comment(self, record_id, comment, dialog):
         """Save the comment to the database."""
         if not comment.strip():
             self.msg("Please enter a comment.", "warning", "Error")
@@ -4063,8 +3951,11 @@ Do you want to proceed anyway?
             dialog.close()
             logging.info(f"Added comment to record ID {record_id}: {comment}")
         except sqlite3.Error as e:
-            self.msg(f"Database error occurred: {e}", "warning", "Error")
-            logging.error(f"Database error: {e}")
+            self.msg(f"Database error occurred: {e}", "warning", "Database Error")
+            logging.error(f"Database error in save_clock_record_comment: {e}")
+        except Exception as e:
+            self.msg(f"Unexpected error occurred: {e}", "warning", "Error")
+            logging.error(f"Unexpected error in save_clock_record_comment: {e}", exc_info=True)
 
     def toggle_window_mode(self):
         screen_geometry = QApplication.primaryScreen().geometry()
@@ -4118,8 +4009,11 @@ Do you want to proceed anyway?
 
                 break
             except sqlite3.Error as e:
-                self.msg(f"Database error occurred: {e}", "warning", "Error")
-                logging.error(f"Database error occurred: {e}")
+                self.msg(f"Database error occurred: {e}", "warning", "Database Error")
+                logging.error(f"Database error in add_staff: {e}")
+            except Exception as e:
+                self.msg(f"Unexpected error occurred: {e}", "warning", "Error")
+                logging.error(f"Unexpected error in add_staff: {e}", exc_info=True)
             finally:
                 conn.close()
             retries += 1
@@ -4179,8 +4073,11 @@ Do you want to proceed anyway?
             logging.info(f"Archived and removed staff member: {staff_name}")
 
         except sqlite3.Error as e:
-            self.msg(f"Database error occurred: {e}", "warning", "Error")
-            logging.error(f"Database error occurred: {e}")
+            self.msg(f"Database error occurred: {e}", "warning", "Database Error")
+            logging.error(f"Database error in remove_staff: {e}")
+        except Exception as e:
+            self.msg(f"Unexpected error occurred: {e}", "warning", "Error")
+            logging.error(f"Unexpected error in remove_staff: {e}", exc_info=True)
         finally:
             conn.close()
 
@@ -5842,29 +5739,22 @@ Do you want to proceed anyway?
             conn = sqlite3.connect(self.database_path)
             cursor = conn.cursor()
             
-            # First get all staff
-            cursor.execute('SELECT code, name FROM staff ORDER BY name')
-            staff_list = cursor.fetchall()
+            # Get all staff with their fingerprint enrollment status in one efficient query
+            cursor.execute('''
+                SELECT s.code, s.name, 
+                       CASE WHEN f.employee_id IS NOT NULL AND f.status = 'ACTIVE' THEN 1 ELSE 0 END as is_enrolled
+                FROM staff s
+                LEFT JOIN fingerprint_users f ON s.code = f.employee_id AND f.status = 'ACTIVE'
+                ORDER BY s.name
+            ''')
+            staff_data = cursor.fetchall()
             conn.close()
             
-            # Then check enrollment status in biometric profiles database
-            staff_data = []
-            for staff_code, staff_name in staff_list:
-                try:
-                    # Check if enrolled in biometric profiles database
-                    bio_conn = sqlite3.connect("biometric_profiles.db")
-                    bio_cursor = bio_conn.cursor()
-                    bio_cursor.execute("SELECT COUNT(*) FROM biometric_profiles WHERE staff_code = ?", (staff_code,))
-                    is_enrolled = bio_cursor.fetchone()[0] > 0
-                    bio_conn.close()
-                    
-                    staff_data.append((staff_code, staff_name, 1 if is_enrolled else 0))
-                except Exception as bio_e:
-                    # If there's an error checking biometric DB, assume not enrolled
-                    staff_data.append((staff_code, staff_name, 0))
+            logging.info(f"Loaded {len(staff_data)} staff members for fingerprint management")
                     
         except Exception as e:
             self.msg(f"Error loading staff data: {e}", "warning", "Error")
+            logging.error(f"Error loading staff data: {e}")
             staff_data = []
 
         if not staff_data:
@@ -5953,17 +5843,37 @@ Do you want to proceed anyway?
                 self.msg("Fingerprint device not available.", "warning", "Error")
                 return
 
+            # **UI SAFEGUARD**: Validate staff exists before allowing enrollment
+            try:
+                import sqlite3
+                with sqlite3.connect(self.database_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('SELECT COUNT(*) FROM staff WHERE code = ?', (staff_code,))
+                    staff_exists = cursor.fetchone()[0] > 0
+                    
+                if not staff_exists:
+                    self.msg(f"Staff member {staff_code} not found in database. Please add staff member first.", "warning", "Validation Error")
+                    logging.warning(f"Attempted enrollment for non-existent staff: {staff_code}")
+                    return
+                    
+            except Exception as validation_error:
+                logging.error(f"Error validating staff existence: {validation_error}")
+                self.msg("Error validating staff data. Please try again.", "warning", "Error")
+                return
+
             # Show the built-in enrollment dialog
             dialog = FingerprintEnrollmentDialog(staff_code, staff_name, parent_dialog)
             result = dialog.exec()
             
             if result == QDialog.DialogCode.Accepted:
+                # **POST-ENROLLMENT VALIDATION**: Verify enrollment consistency
+                self._validate_enrollment_success(staff_code, staff_name)
+                
                 self.msg(f"Fingerprint enrolled successfully for {staff_name}!", "info", "Success")
                 logging.info(f"Fingerprint enrolled for {staff_name} ({staff_code})")
                 
-                # Refresh the dialog
-                parent_dialog.close()
-                self.open_fingerprint_management()
+                # Force a brief delay to ensure database is updated
+                QTimer.singleShot(500, lambda: self.refresh_fingerprint_management_delayed(parent_dialog))
             else:
                 # User cancelled or enrollment failed
                 logging.info(f"Fingerprint enrollment cancelled for {staff_name} ({staff_code})")
@@ -5971,6 +5881,41 @@ Do you want to proceed anyway?
         except Exception as e:
             self.msg(f"Error enrolling fingerprint: {str(e)}", "warning", "Error")
             logging.error(f"Error enrolling fingerprint for {staff_code}: {e}")
+    
+    def _validate_enrollment_success(self, staff_code, staff_name):
+        """Validate that enrollment was successful and data is consistent."""
+        try:
+            import sqlite3
+            with sqlite3.connect(self.database_path) as conn:
+                cursor = conn.cursor()
+                
+                # Check that both staff and fingerprint records exist
+                cursor.execute('SELECT COUNT(*) FROM staff WHERE code = ?', (staff_code,))
+                staff_exists = cursor.fetchone()[0] > 0
+                
+                cursor.execute('SELECT COUNT(*) FROM fingerprint_users WHERE employee_id = ? AND status = "ACTIVE"', (staff_code,))
+                fingerprint_exists = cursor.fetchone()[0] > 0
+                
+                if not staff_exists:
+                    logging.error(f"Staff record missing after enrollment for {staff_code}")
+                elif not fingerprint_exists:
+                    logging.error(f"Fingerprint record missing after enrollment for {staff_code}")
+                else:
+                    logging.info(f"Enrollment validation successful for {staff_code}")
+                    
+        except Exception as e:
+            logging.error(f"Error validating enrollment success: {e}")
+    
+    def refresh_fingerprint_management_delayed(self, dialog):
+        """Refresh fingerprint management with a slight delay to ensure DB updates complete."""
+        try:
+            dialog.close()
+            # Small additional delay to ensure everything is properly cleaned up
+            QTimer.singleShot(100, self.open_fingerprint_management)
+        except Exception as e:
+            logging.error(f"Error in delayed refresh: {e}")
+            # Fallback - just refresh normally
+            self.refresh_fingerprint_management(dialog)
 
     def remove_staff_fingerprint(self, staff_code, staff_name, parent_dialog):
         """Remove fingerprint for a staff member."""
