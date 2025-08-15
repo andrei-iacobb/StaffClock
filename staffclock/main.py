@@ -4360,7 +4360,7 @@ Do you want to proceed anyway?
     def generate_all_timesheets(self, day_selected):
         '''Legacy method - now redirects to progressive generation.'''
         # Redirect to progressive system for better user experience
-        self.start_progressive_timesheet_generation()
+        self.start_integrated_progressive_generation()
         
         # Show explanation to admin
         self.msg("🚀 Upgraded to Progressive Generation!\n\n"
@@ -5001,26 +5001,7 @@ Do you want to proceed anyway?
             logging.error(f"Error pinging printer at {ip_address}: {e}")
             return False
 
-    def test_printer_connection(self, ip_address):
-        """Test both ping and port 9100 connection to the printer."""
-        if not self.ping_printer(ip_address):
-            return False, "Printer is not responding to ping"
-            
-        try:
-            # Try to connect to port 9100 (standard printer port)
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2)  # 2 second timeout
-            result = sock.connect_ex((ip_address, 9100))
-            sock.close()
-            
-            if result == 0:
-                return True, "Printer connection successful"
-            else:
-                return False, "Printer port 9100 is not accessible"
-                
-        except Exception as e:
-            logging.error(f"Error testing printer connection: {e}")
-            return False, f"Connection error: {str(e)}"
+        
 
     def generate_visitor_pdf(self, records, file_path):
         """Generate a PDF of visitor records."""

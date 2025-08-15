@@ -82,7 +82,7 @@ class FingerprintManager(QObject):
                         last_verification TIMESTAMP,
                         verification_count INTEGER DEFAULT 0,
                         status TEXT DEFAULT 'ACTIVE',
-                        FOREIGN KEY (employee_id) REFERENCES employees(id)
+                        FOREIGN KEY (employee_id) REFERENCES staff(code)
                     )
                 ''')
                 
@@ -96,7 +96,7 @@ class FingerprintManager(QObject):
                         match_score REAL,
                         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         notes TEXT,
-                        FOREIGN KEY (employee_id) REFERENCES employees(id)
+                        FOREIGN KEY (employee_id) REFERENCES staff(code)
                     )
                 ''')
                 
